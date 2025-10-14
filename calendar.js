@@ -2,7 +2,7 @@ const { useState, useEffect } = React;
 const { Calendar: CalendarIcon, Users, Clock, Filter, RefreshCw, ChevronLeft, ChevronRight, Search, Sparkles } = lucide;
 
 // YOUR WEBHOOK URL - Already configured!
-const N8N_WEBHOOK_URL = 'http://dustbusters-n8n.duckdns.org:5678/webhook/calendar-data';
+const N8N_WEBHOOK_URL = 'https://dustbusters-n8n.duckdns.org/webhook/calendar-data';
 
 const DustBustersCalendar = () => {
   const [currentWeek, setCurrentWeek] = useState(getMonday(new Date()));
