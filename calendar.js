@@ -19,6 +19,10 @@ const DustBustersCalendar = () => {
 
   const [showCleanersModal, setShowCleanersModal] = useState(false);
   const [cleanerModalRegionFilter, setCleanerModalRegionFilter] = useState('all');
+  
+  // New state for smart search
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const [dynamicStats, setDynamicStats] = useState({
     totalCleaners: 0,
@@ -41,6 +45,83 @@ const DustBustersCalendar = () => {
       return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
     }
     return name.substring(0, 2).toUpperCase();
+  };
+  
+  // New helper to parse dates from search query
+  const parseDateFromString = (str) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const lowerStr = str.toLowerCase().trim();
+
+    if (lowerStr === 'today') return today;
+    if (lowerStr === 'tomorrow') {
+        const d = new Date(today);
+        d.setDate(d.getDate() + 1);
+        return d;
+    }
+    if (lowerStr === 'yesterday') {
+        const d = new Date(today);
+        d.setDate(d.getDate() - 1);
+        return d;
+    }
+
+    const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayIndex = daysOfWeek.findIndex(day => lowerStr.includes(day));
+    if (dayIndex !== -1) {
+        let date = new Date(today);
+        const currentDay = date.getDay();
+        let diff = dayIndex - currentDay;
+        if (diff <= 0 && !lowerStr.includes('last')) diff += 7;
+        if (diff > 0 && lowerStr.includes('last')) diff -= 7;
+        date.setDate(date.getDate() + diff);
+        return date;
+    }
+    
+    try {
+        const parsed = new Date(lowerStr);
+        if (!isNaN(parsed.getTime()) && (/\d/.test(lowerStr) || lowerStr.match(/[a-z]{3,}/))) {
+             if (parsed.getFullYear() > 1980) { // Simple sanity check
+                parsed.setHours(0,0,0,0);
+                return parsed;
+             }
+        }
+    } catch(e) { /* ignore parse errors */ }
+    
+    const match = lowerStr.match(/^(\d{1,2})\/(\d{1,2})$/);
+    if (match) {
+        const month = parseInt(match[1], 10) - 1;
+        const day = parseInt(match[2], 10);
+        const year = today.getFullYear();
+        let date = new Date(year, month, day);
+        date.setHours(0,0,0,0);
+        if (date < today) date.setFullYear(year + 1);
+        return date;
+    }
+
+    return null;
+  };
+
+  // New handler for clicking a search suggestion
+  const handleSuggestionClick = (suggestion) => {
+    switch (suggestion.type) {
+        case 'date':
+            const date = suggestion.value;
+            setSelectedDay(date);
+            setCurrentWeek(getMonday(date));
+            setCurrentMonth(date);
+            setView('daily');
+            setSearchQuery('');
+            break;
+        case 'cleaner':
+        case 'notes':
+            setSearchQuery(suggestion.value);
+            break;
+        case 'region':
+            setSelectedRegion(suggestion.value.toLowerCase());
+            setSearchQuery('');
+            break;
+    }
+    setShowSuggestions(false);
   };
 
   const hourlySlots = ['8am', '9am', '10am', '11am', '12pm', '1pm', '2pm', '3pm', '4pm', '5pm', '6pm', '7pm', '8pm'];
@@ -71,6 +152,74 @@ const DustBustersCalendar = () => {
     const interval = setInterval(loadAvailabilityData, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  const availableRegions = useMemo(() => {
+    const regions = new Set();
+    availabilityData.forEach(cleaner => {
+      if (cleaner.region && typeof cleaner.region === 'string' && cleaner.region.trim() !== '') {
+        regions.add(cleaner.region);
+      }
+      if (cleaner.regions && Array.isArray(cleaner.regions)) {
+        cleaner.regions.forEach(r => {
+          if (r && typeof r === 'string' && r.trim() !== '') {
+            regions.add(r);
+          }
+        });
+      }
+    });
+    return ['all', ...Array.from(regions).sort()];
+  }, [availabilityData]);
+  
+  // New effect for generating search suggestions
+  useEffect(() => {
+    if (searchQuery.length < 2) {
+        setSearchSuggestions([]);
+        return;
+    }
+
+    const suggestions = [];
+    const lowerQuery = searchQuery.toLowerCase();
+
+    const parsedDate = parseDateFromString(lowerQuery);
+    if (parsedDate) {
+        suggestions.push({
+            type: 'date',
+            value: parsedDate,
+            label: `📅 Go to date: ${parsedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
+        });
+    }
+
+    const uniqueCleaners = Array.from(new Map(availabilityData.map(c => [c.id || c.name, c])).values());
+    uniqueCleaners
+        .filter(c => (c.fullName || c.name)?.toLowerCase().includes(lowerQuery))
+        .slice(0, 3)
+        .forEach(c => {
+            suggestions.push({
+                type: 'cleaner',
+                value: c.fullName || c.name,
+                label: `👤 Cleaner: ${c.fullName || c.name}`
+            });
+        });
+    
+    availableRegions
+        .filter(r => r !== 'all' && r.toLowerCase().includes(lowerQuery))
+        .slice(0, 2)
+        .forEach(r => {
+            suggestions.push({
+                type: 'region',
+                value: r,
+                label: `📍 Filter by region: ${r.charAt(0).toUpperCase() + r.slice(1)}`
+            });
+        });
+
+    suggestions.push({
+        type: 'notes',
+        value: searchQuery,
+        label: `📝 Search notes for: "${searchQuery}"`
+    });
+
+    setSearchSuggestions(suggestions);
+  }, [searchQuery, availabilityData, availableRegions]);
   
   useEffect(() => {
     const lowerQuery = searchQuery.toLowerCase();
@@ -176,7 +325,7 @@ const DustBustersCalendar = () => {
     const month = date.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const startDay = firstDay.getDay();
+    const startDay = firstDay.getDay(); 
     const daysInMonth = lastDay.getDate();
     const days = [];
     for (let i = 0; i < startDay; i++) days.push(null);
@@ -287,23 +436,6 @@ const DustBustersCalendar = () => {
     setView(newView);
   };
 
-  const availableRegions = useMemo(() => {
-    const regions = new Set();
-    availabilityData.forEach(cleaner => {
-      if (cleaner.region && typeof cleaner.region === 'string' && cleaner.region.trim() !== '') {
-        regions.add(cleaner.region);
-      }
-      if (cleaner.regions && Array.isArray(cleaner.regions)) {
-        cleaner.regions.forEach(r => {
-          if (r && typeof r === 'string' && r.trim() !== '') {
-            regions.add(r);
-          }
-        });
-      }
-    });
-    return ['all', ...Array.from(regions).sort()];
-  }, [availabilityData]);
-
   const getRegionColor = (region) => {
     const lowerRegion = region?.toLowerCase();
     const specificColors = {
@@ -326,6 +458,25 @@ const DustBustersCalendar = () => {
       'Charlotte': '🟡', 'Triad': '🟣', 'Raleigh': '🟤', 'Asheville': '⛰️', 'Wilmington': '🌊', 'Durham': '🐂'
     };
     return emojis[region] || '📍';
+  };
+
+  // New render function for the search suggestions popup
+  const renderSearchSuggestions = () => {
+    if (!showSuggestions || searchSuggestions.length === 0) {
+        return null;
+    }
+    return React.createElement('div', { className: 'absolute top-full w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-30 overflow-hidden' },
+        React.createElement('ul', { className: 'divide-y divide-gray-100' },
+            ...searchSuggestions.map((suggestion, index) =>
+                React.createElement('li', { key: index },
+                    React.createElement('button', {
+                        className: 'w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700',
+                        onClick: () => handleSuggestionClick(suggestion)
+                    }, suggestion.label)
+                )
+            )
+        )
+    );
   };
 
   const renderDatePicker = () => {
@@ -519,11 +670,14 @@ const DustBustersCalendar = () => {
           }, '🔍'),
           React.createElement('input', {
             type: 'text',
-            placeholder: 'Search cleaners by name, region, or notes...',
+            placeholder: 'Search for cleaner, region, or jump to a date (e.g., "next friday")...',
             value: searchQuery,
             onChange: (e) => setSearchQuery(e.target.value),
+            onFocus: () => setShowSuggestions(true),
+            onBlur: () => setTimeout(() => setShowSuggestions(false), 150),
             className: 'w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none'
-          })
+          }),
+          renderSearchSuggestions()
         )
       )
     ),
@@ -577,7 +731,7 @@ const DustBustersCalendar = () => {
                     setShowDatePicker(!showDatePicker);
                 },
                 className: 'px-4 py-2 font-semibold text-gray-800 min-w-[250px] text-center text-sm cursor-pointer hover:bg-gray-100 rounded-md'
-             },
+            },
               view === 'daily' ? selectedDay.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) :
               view === 'weekly' ? `Week of ${weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` :
               currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -805,4 +959,3 @@ const DustBustersCalendar = () => {
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(React.createElement(DustBustersCalendar));
-
