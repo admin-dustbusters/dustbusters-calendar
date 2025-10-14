@@ -30,12 +30,23 @@ const DustBustersCalendar = () => {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
       console.log('Loaded data from n8n:', data);
-      
-      if (data && data.cleaners) {
-        setAvailabilityData(data.cleaners);
-      } else if (Array.isArray(data)) {
-        setAvailabilityData(data);
+
+      let cleaners = [];
+      if (Array.isArray(data)) {
+        cleaners = data[0]?.cleaners || [];
+      } else if (data.cleaners) {
+        cleaners = data.cleaners;
       }
+
+      // Process cleaners to ensure proper capitalization and data format
+      cleaners = cleaners.map(cleaner => ({
+        ...cleaner,
+        name: capitalizeWords(cleaner.name || ''),
+        fullName: capitalizeWords(cleaner.fullName || cleaner.name || '')
+      }));
+
+      console.log('Cleaners parsed:', cleaners);
+      setAvailabilityData(cleaners);
       setLastSync(new Date());
     } catch (error) {
       console.error('Error loading data:', error);
@@ -50,6 +61,7 @@ const DustBustersCalendar = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Helper function to capitalize words
   const capitalizeWords = (str) => {
     return str.replace(/\b\w+/g, word => 
       word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
@@ -98,6 +110,7 @@ const DustBustersCalendar = () => {
   const weekDates = getWeekDates();
   const monthDays = getMonthDays();
 
+  // Updated cleaner filtering logic
   const getCleanersForSlot = (date, blockIdOrHour) => {
     const dayPrefix = getDayOfWeekAbbrev(date);
     let filtered = availabilityData;
@@ -159,6 +172,18 @@ const DustBustersCalendar = () => {
     return { available, booked };
   };
 
+  const openSlotDetails = (date, blockIdOrHour) => {
+    const { available, booked } = getCleanersForSlot(date, blockIdOrHour);
+    const isHourly = hourlySlots.includes(blockIdOrHour);
+    setSelectedSlot({
+      day: date.toLocaleDateString('en-US', { weekday: 'long' }),
+      date: date,
+      block: isHourly ? { label: blockIdOrHour, time: blockIdOrHour } : timeBlocks.find(b => b.id === blockIdOrHour),
+      available, booked, isHourly
+    });
+    setShowModal(true);
+  };
+
   const getStats = () => {
     const stats = { available: 0, booked: 0 };
     availabilityData.forEach(c => {
@@ -174,6 +199,7 @@ const DustBustersCalendar = () => {
 
   const stats = getStats();
 
+  // Dynamic regions with proper capitalization
   const availableRegions = useMemo(() => {
     const regions = new Set();
     availabilityData.forEach(cleaner => {
@@ -203,6 +229,18 @@ const DustBustersCalendar = () => {
     return colors[region?.toLowerCase()] || colors.default;
   };
 
+  const getRegionEmoji = (region) => {
+    const emojis = {
+      'Charlotte': '🔵',
+      'Triad': '🟢',
+      'Raleigh': '🟡',
+      'Asheville': '🟣',
+      'Wilmington': '🟠',
+      'Durham': '🩷'
+    };
+    return emojis[region] || '📍';
+  };
+
   if (loading && availabilityData.length === 0) {
     return React.createElement('div', { className: 'min-h-screen bg-gray-50 flex items-center justify-center' },
       React.createElement('div', { className: 'text-center' },
@@ -214,12 +252,13 @@ const DustBustersCalendar = () => {
   }
 
   return React.createElement('div', { className: 'min-h-screen bg-gray-50 p-5' },
+    // Header
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-5 flex items-center justify-between' },
         React.createElement('div', { className: 'flex items-center gap-3' },
           React.createElement('div', { className: 'text-3xl' }, '🧹'),
           React.createElement('div', null,
-            React.createElement('h1', { className: 'text-2xl font-bold text-gray-800' }, 'DustBusters Calendar'),
+            React.createElement('h1', { className: 'text-2xl font-bold text-gray-800' }, 'DustBusters Scheduling Calendar'),
             lastSync && React.createElement('p', { className: 'text-xs text-gray-500' },
               `Last updated ${lastSync.toLocaleTimeString()}`
             )
@@ -228,13 +267,3 @@ const DustBustersCalendar = () => {
         React.createElement('button', {
           onClick: loadAvailabilityData,
           disabled: loading,
-          className: 'flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50'
-        }, loading ? '↻ Refreshing...' : '↻ Refresh')
-      )
-    )
-  );
-};
-
-// Render the app
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(React.createElement(DustBustersCalendar));
