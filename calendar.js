@@ -99,7 +99,22 @@ const DustBustersCalendar = () => {
 
   const getCleanersForSlot = (date, blockIdOrHour) => {
     const dayPrefix = getDayOfWeekAbbrev(date);
-    let filtered = availabilityData;
+    
+    // Get the Monday of the week we're viewing
+    const weekMonday = getMonday(date);
+    const weekString = weekMonday.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+    
+    // Filter cleaners by the week we're viewing
+    let filtered = availabilityData.filter(c => {
+      // Match by week starting date
+      if (c.weekStarting) {
+        return c.weekStarting === weekString;
+      }
+      // If no weekStarting, include (for backwards compatibility)
+      return true;
+    });
+    
+    console.log('Week:', weekString, 'Found', filtered.length, 'cleaner entries');
     
     if (selectedRegion !== 'all') {
       filtered = filtered.filter(c => c.region?.toLowerCase() === selectedRegion);
@@ -114,8 +129,18 @@ const DustBustersCalendar = () => {
     const isHourly = hourlySlots.includes(blockIdOrHour);
     
     if (isHourly) {
-      const available = filtered.filter(c => c[`${dayPrefix}_${blockIdOrHour}`] === 'AVAILABLE');
-      const booked = filtered.filter(c => c[`${dayPrefix}_${blockIdOrHour}`]?.startsWith('BOOKED'));
+      const fieldName = `${dayPrefix}_${blockIdOrHour}`;
+      
+      const available = filtered.filter(c => {
+        const value = c[fieldName];
+        return value === 'AVAILABLE';
+      });
+      
+      const booked = filtered.filter(c => {
+        const value = c[fieldName];
+        return value && typeof value === 'string' && value.startsWith('BOOKED');
+      });
+      
       return { available, booked, total: available.length + booked.length };
     } else {
       const block = timeBlocks.find(b => b.id === blockIdOrHour);
@@ -123,7 +148,10 @@ const DustBustersCalendar = () => {
         block.hours.every(h => c[`${dayPrefix}_${h}`] === 'AVAILABLE')
       );
       const booked = filtered.filter(c => 
-        block.hours.some(h => c[`${dayPrefix}_${h}`]?.startsWith('BOOKED'))
+        block.hours.some(h => {
+          const value = c[`${dayPrefix}_${h}`];
+          return value && typeof value === 'string' && value.startsWith('BOOKED');
+        })
       );
       return { available, booked, total: available.length + booked.length };
     }
