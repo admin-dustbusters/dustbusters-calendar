@@ -30,6 +30,15 @@ const DustBustersCalendar = () => {
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     return new Date(d.setDate(diff));
   }
+  
+  const getInitials = (name) => {
+    if (!name || typeof name !== 'string') return '';
+    const parts = name.trim().split(' ');
+    if (parts.length > 1 && parts[parts.length - 1]) {
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
 
   const hourlySlots = ['8am', '9am', '10am', '11am', '12pm', '1pm', '2pm', '3pm', '4pm', '5pm', '6pm', '7pm', '8pm'];
 
@@ -195,6 +204,31 @@ const DustBustersCalendar = () => {
       return { available, booked, total: available.length + booked.length };
     }
   };
+  
+  const getAvailableCleanersForDay = (date) => {
+    const filteredCleaners = availabilityData
+        .filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
+        .filter(c => !searchQuery || c.name?.toLowerCase().includes(searchQuery.toLowerCase()) || c.fullName?.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const dayPrefix = getDayOfWeekAbbrev(date);
+    const weekString = getMonday(date).toISOString().split('T')[0];
+    
+    const availableCleaners = new Map();
+    const cleanersForThisWeek = filteredCleaners.filter(c => c.weekStarting ? c.weekStarting === weekString : true);
+
+    cleanersForThisWeek.forEach(cleaner => {
+        for (const hour of hourlySlots) {
+            if (cleaner[`${dayPrefix}_${hour}`] === 'AVAILABLE') {
+                if (!availableCleaners.has(cleaner.id)) {
+                    availableCleaners.set(cleaner.id, cleaner);
+                }
+                break; 
+            }
+        }
+    });
+
+    return Array.from(availableCleaners.values());
+  };
 
   const openSlotDetails = (date, blockIdOrHour) => {
     const { available, booked } = getCleanersForSlot(date, blockIdOrHour);
@@ -225,14 +259,10 @@ const DustBustersCalendar = () => {
     return ['all', ...Array.from(regions).sort()];
   }, [availabilityData]);
 
-  // --- UPDATED COLORS ---
   const getRegionColor = (region) => {
     const lowerRegion = region?.toLowerCase();
     const specificColors = {
-      'all': 'teal',
-      'charlotte': 'yellow',
-      'raleigh': 'stone', // Using stone for a distinct brown
-      'triad': 'purple',
+      'all': 'teal', 'charlotte': 'yellow', 'raleigh': 'stone', 'triad': 'purple',
     };
     if (specificColors[lowerRegion]) return specificColors[lowerRegion];
     const fallbackColors = ['pink', 'indigo', 'cyan', 'lime', 'orange'];
@@ -246,15 +276,9 @@ const DustBustersCalendar = () => {
     return fallbackColors[index];
   };
 
-  // --- UPDATED EMOJIS ---
   const getRegionEmoji = (region) => {
     const emojis = {
-      'Charlotte': '🟡',
-      'Triad': '🟣',
-      'Raleigh': '🟤',
-      'Asheville': '⛰️',
-      'Wilmington': '🌊',
-      'Durham': '🐂'
+      'Charlotte': '🟡', 'Triad': '🟣', 'Raleigh': '🟤', 'Asheville': '⛰️', 'Wilmington': '🌊', 'Durham': '🐂'
     };
     return emojis[region] || '📍';
   };
@@ -283,7 +307,13 @@ const DustBustersCalendar = () => {
           return React.createElement('button', {
             key: idx,
             onClick: () => {
-              setSelectedDay(date);
+              if (view === 'daily') {
+                setSelectedDay(date);
+              } else if (view === 'weekly') {
+                setCurrentWeek(getMonday(date));
+              } else {
+                setCurrentMonth(date);
+              }
               setShowDatePicker(false);
             },
             className: `py-1 text-sm rounded-full ${isSelected ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`
@@ -421,12 +451,14 @@ const DustBustersCalendar = () => {
             }, '←'),
             React.createElement('button', { 
                 onClick: () => {
-                    if (view === 'daily' || view === 'monthly') {
-                        setDatePickerMonth(view === 'daily' ? selectedDay : currentMonth);
-                        setShowDatePicker(!showDatePicker);
-                    }
+                    let initialDate;
+                    if (view === 'daily') initialDate = selectedDay;
+                    else if (view === 'weekly') initialDate = currentWeek;
+                    else initialDate = currentMonth;
+                    setDatePickerMonth(initialDate);
+                    setShowDatePicker(!showDatePicker);
                 },
-                className: `px-4 py-2 font-semibold text-gray-800 min-w-[250px] text-center text-sm ${view === 'daily' || view === 'monthly' ? 'cursor-pointer hover:bg-gray-100 rounded-md' : ''}`
+                className: 'px-4 py-2 font-semibold text-gray-800 min-w-[250px] text-center text-sm cursor-pointer hover:bg-gray-100 rounded-md'
              },
               view === 'daily' ? selectedDay.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) :
               view === 'weekly' ? `Week of ${weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` :
@@ -542,12 +574,14 @@ const DustBustersCalendar = () => {
                                         React.createElement('div', {
                                             key: cleaner.id,
                                             className: 'inline-block px-2.5 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium hover:scale-105 transition-transform cursor-pointer',
+                                            title: cleaner.name
                                         }, cleaner.name)
                                     ),
                                     ...booked.slice(0, 3).map((cleaner) =>
                                         React.createElement('div', {
                                             key: cleaner.id,
                                             className: 'inline-block px-2.5 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium',
+                                            title: cleaner.name
                                         }, cleaner.name)
                                     ),
                                     total === 0 && React.createElement('div', { className: 'text-gray-400 text-xs italic' }, 'No availability')
@@ -569,13 +603,24 @@ const DustBustersCalendar = () => {
             if (!date) {
               return React.createElement('div', { key: `empty-${idx}`, className: 'bg-gray-50 rounded-lg' });
             }
+            const availableCleaners = getAvailableCleanersForDay(date);
             const isToday = date.toDateString() === new Date().toDateString();
             return React.createElement('div', {
               key: idx,
               onClick: () => { setSelectedDay(date); setView('daily'); },
-              className: `bg-white border-2 rounded-lg p-3 min-h-[100px] cursor-pointer hover:border-blue-500 transition-colors ${isToday ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`
+              className: `border-2 rounded-lg p-2 min-h-[100px] cursor-pointer hover:border-blue-500 transition-colors ${isToday ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`
             },
-              React.createElement('div', { className: 'font-semibold text-gray-800 mb-2' }, date.getDate()),
+              React.createElement('div', { className: 'font-semibold text-gray-800 mb-2 text-sm' }, date.getDate()),
+              React.createElement('div', { className: 'flex flex-wrap gap-1' },
+                ...availableCleaners.slice(0, 5).map(cleaner => 
+                  React.createElement('div', {
+                    key: cleaner.id,
+                    className: 'w-6 h-6 flex items-center justify-center bg-green-100 text-green-800 rounded-full text-xs font-bold',
+                    title: cleaner.name,
+                  }, getInitials(cleaner.name))
+                ),
+                availableCleaners.length > 5 && React.createElement('div', { className: 'text-xs text-gray-600 font-medium' }, `+${availableCleaners.length - 5}`)
+              )
             );
           })
         )
