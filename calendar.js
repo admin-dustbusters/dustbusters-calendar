@@ -86,7 +86,6 @@ const DustBustersCalendar = () => {
     const daysInMonth = lastDay.getDate();
     
     const days = [];
-    // Adjust for week starting on Sunday in the grid
     for (let i = 0; i < startDay; i++) days.push(null);
     for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
     return days;
@@ -209,7 +208,6 @@ const DustBustersCalendar = () => {
   }
 
   return React.createElement('div', { className: 'min-h-screen bg-gray-50 p-5' },
-    // Header
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-5 flex items-center justify-between' },
         React.createElement('div', { className: 'flex items-center gap-3' },
@@ -230,8 +228,6 @@ const DustBustersCalendar = () => {
         )
       )
     ),
-
-    // AI Assistant Banner
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'bg-gradient-to-r from-purple-600 to-purple-800 rounded-xl shadow-sm p-4 flex items-center gap-4 text-white' },
         React.createElement('div', { className: 'text-2xl' }, '🤖'),
@@ -245,8 +241,6 @@ const DustBustersCalendar = () => {
         }, 'Ask AI')
       )
     ),
-
-    // Stats Bar
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'grid grid-cols-4 gap-4' },
         React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-5' },
@@ -269,8 +263,6 @@ const DustBustersCalendar = () => {
         )
       )
     ),
-
-    // Search Bar
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-5' },
         React.createElement('div', { className: 'relative' },
@@ -288,8 +280,6 @@ const DustBustersCalendar = () => {
         )
       )
     ),
-
-    // View Selector & Controls
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' },
         React.createElement('div', { className: 'flex gap-3 mb-4' },
@@ -357,16 +347,23 @@ const DustBustersCalendar = () => {
       )
     ),
 
-    // Daily View
+    // Daily View (CORRECTED LOGIC)
     view === 'daily' && React.createElement('div', { className: 'max-w-7xl mx-auto' },
       React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-7 overflow-x-auto' },
         React.createElement('div', { className: 'min-w-[1000px]' },
           (() => {
-            let filtered = availabilityData.filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
+            // --- FIX STARTS HERE ---
+            const weekMonday = getMonday(selectedDay);
+            const weekString = weekMonday.toISOString().split('T')[0];
+
+            let filtered = availabilityData
+              .filter(c => c.weekStarting ? c.weekStarting === weekString : true) // Filter by the correct week for the selected day
+              .filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
               .filter(c => !searchQuery || c.name?.toLowerCase().includes(searchQuery.toLowerCase()) || c.fullName?.toLowerCase().includes(searchQuery.toLowerCase()));
-            
+            // --- FIX ENDS HERE ---
+
             if (filtered.length === 0) {
-              return React.createElement('div', { className: 'text-center py-12 text-gray-500' }, 'No cleaners found matching your filters');
+              return React.createElement('div', { className: 'text-center py-12 text-gray-500' }, 'No cleaners found for this day.');
             }
             
             return React.createElement('div', { 
@@ -405,7 +402,6 @@ const DustBustersCalendar = () => {
       )
     ),
 
-    // Weekly View (New Style)
     view === 'weekly' && React.createElement('div', { className: 'max-w-7xl mx-auto' },
         React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-7 overflow-x-auto' },
             React.createElement('div', { className: 'min-w-[1200px]' },
@@ -456,8 +452,6 @@ const DustBustersCalendar = () => {
             )
         )
     ),
-
-    // Monthly View
     view === 'monthly' && React.createElement('div', { className: 'max-w-7xl mx-auto' },
       React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-7' },
         React.createElement('div', { className: 'grid grid-cols-7 gap-2' },
@@ -491,8 +485,6 @@ const DustBustersCalendar = () => {
         )
       )
     ),
-
-    // Modal
     showModal && selectedSlot && React.createElement('div', { 
       className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4',
       onClick: () => setShowModal(false)
@@ -503,7 +495,6 @@ const DustBustersCalendar = () => {
       },
         React.createElement('div', { className: 'text-2xl font-bold text-gray-800 mb-2' }, `${selectedSlot.day} ${selectedSlot.block.label}`),
         React.createElement('div', { className: 'text-sm text-gray-600 mb-6' }, `${selectedSlot.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} • ${selectedSlot.block.time}`),
-        // Available Cleaners
         React.createElement('div', { className: 'mb-6' },
           React.createElement('h3', { className: 'font-semibold text-green-700 mb-3 text-lg' }, `✅ Available (${selectedSlot.available.length})`),
           React.createElement('div', { className: 'space-y-3' },
@@ -519,7 +510,6 @@ const DustBustersCalendar = () => {
             ) : React.createElement('div', {className: 'text-sm text-gray-500'}, 'No cleaners available for this slot.')
           )
         ),
-        // Booked Cleaners
         selectedSlot.booked.length > 0 && React.createElement('div', { className: 'mb-6' },
           React.createElement('h3', { className: 'font-semibold text-red-700 mb-3 text-lg' }, `🔴 Booked (${selectedSlot.booked.length})`),
           React.createElement('div', { className: 'space-y-2' },
@@ -531,7 +521,6 @@ const DustBustersCalendar = () => {
             )
           )
         ),
-        // Modal Actions
         React.createElement('div', { className: 'flex gap-3 mt-6' },
           React.createElement('button', {
             onClick: () => alert('AI booking assistant coming soon!'),
