@@ -821,11 +821,10 @@ const DustBustersCalendar = () => {
                                 setSelectedDay(date);
                                 setView('daily');
                             },
-                            className: `bg-gray-800 text-white p-4 font-semibold text-center text-sm cursor-pointer hover:bg-blue-500 transition-colors relative ${isToday ? 'bg-blue-700' : ''}`
+                            className: `p-4 font-semibold text-center text-sm cursor-pointer hover:opacity-80 transition-colors ${isToday ? 'bg-yellow-300 text-yellow-800' : 'bg-gray-800 text-white hover:bg-blue-500'}`
                         },
-                            isToday && React.createElement('span', {className: 'absolute top-1 right-2 text-xs font-bold text-yellow-300'}, 'TODAY'),
                             day,
-                            React.createElement('div', { className: 'text-xs font-normal opacity-80 mt-1' },
+                            React.createElement('div', { className: 'text-xs font-normal mt-1' },
                                 date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                             )
                         );
@@ -843,7 +842,7 @@ const DustBustersCalendar = () => {
                             return React.createElement('div', {
                                 key: dayIdx,
                                 onClick: () => openSlotDetails(date, block.id),
-                                className: `bg-white p-3 min-h-[100px] relative cursor-pointer hover:bg-gray-50 transition-colors ${isToday ? 'bg-blue-50' : ''}`
+                                className: `p-3 min-h-[100px] relative cursor-pointer hover:bg-gray-100 transition-colors ${isToday ? 'bg-yellow-50' : 'bg-white'}`
                             },
                                 total > 0 && React.createElement('div', { className: 'absolute top-2 right-2 bg-blue-500 text-white text-xs font-semibold px-2 py-1 rounded-full' }, total),
                                 React.createElement('div', { className: 'flex flex-wrap gap-1' },
@@ -885,10 +884,10 @@ const DustBustersCalendar = () => {
             return React.createElement('div', {
               key: idx,
               onClick: () => { setSelectedDay(date); setView('daily'); },
-              className: `border-2 rounded-lg p-2 min-h-[120px] cursor-pointer hover:border-blue-500 transition-colors ${isToday ? 'border-blue-500 bg-blue-100' : 'border-gray-200 bg-white'}`
+              className: `border-2 rounded-lg p-2 min-h-[120px] cursor-pointer hover:border-blue-500 transition-colors ${isToday ? 'border-yellow-400 bg-yellow-100' : 'border-gray-200 bg-white'}`
             },
               React.createElement('div', { 
-                  className: `font-semibold mb-2 text-sm ${isToday ? 'text-blue-600' : 'text-gray-800'}` 
+                  className: `font-semibold mb-2 text-sm ${isToday ? 'text-yellow-700' : 'text-gray-800'}` 
               }, date.getDate()),
               React.createElement('div', { className: 'flex flex-wrap gap-1' },
                 ...availableCleaners.slice(0, 5).map(cleaner => 
