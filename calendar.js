@@ -1,6 +1,5 @@
 const { useState, useEffect, useMemo } = React;
 
-// Updated to use HTTPS
 const N8N_WEBHOOK_URL = 'https://dustbusters-n8n.duckdns.org/webhook/calendar-data';
 
 const DustBustersCalendar = () => {
@@ -38,7 +37,6 @@ const DustBustersCalendar = () => {
         cleaners = data.cleaners;
       }
 
-      // Process cleaners to ensure proper capitalization and data format
       cleaners = cleaners.map(cleaner => ({
         ...cleaner,
         name: capitalizeWords(cleaner.name || ''),
@@ -61,7 +59,6 @@ const DustBustersCalendar = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Helper function to capitalize words
   const capitalizeWords = (str) => {
     return str.replace(/\b\w+/g, word => 
       word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
@@ -110,7 +107,6 @@ const DustBustersCalendar = () => {
   const weekDates = getWeekDates();
   const monthDays = getMonthDays();
 
-  // Updated cleaner filtering logic
   const getCleanersForSlot = (date, blockIdOrHour) => {
     const dayPrefix = getDayOfWeekAbbrev(date);
     let filtered = availabilityData;
@@ -199,7 +195,6 @@ const DustBustersCalendar = () => {
 
   const stats = getStats();
 
-  // Dynamic regions with proper capitalization
   const availableRegions = useMemo(() => {
     const regions = new Set();
     availabilityData.forEach(cleaner => {
@@ -252,7 +247,6 @@ const DustBustersCalendar = () => {
   }
 
   return React.createElement('div', { className: 'min-h-screen bg-gray-50 p-5' },
-    // Header
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-5 flex items-center justify-between' },
         React.createElement('div', { className: 'flex items-center gap-3' },
@@ -272,7 +266,6 @@ const DustBustersCalendar = () => {
       )
     ),
 
-    // Stats
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'grid grid-cols-4 gap-4' },
         React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-5' },
@@ -296,7 +289,6 @@ const DustBustersCalendar = () => {
       )
     ),
 
-    // Search
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-5' },
         React.createElement('div', { className: 'relative' },
@@ -315,12 +307,16 @@ const DustBustersCalendar = () => {
       )
     ),
 
-    // View Selector & Navigation
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-5' },
         React.createElement('div', { className: 'flex items-center justify-between mb-4' },
-          // View Toggle
           React.createElement('div', { className: 'flex gap-2' },
+            React.createElement('button', {
+              onClick: () => setView('daily'),
+              className: `px-4 py-2 rounded-lg font-medium transition-colors ${
+                view === 'daily' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`
+            }, '📅 Daily'),
             React.createElement('button', {
               onClick: () => setView('weekly'),
               className: `px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -341,11 +337,14 @@ const DustBustersCalendar = () => {
             }, '⏰ Hourly')
           ),
           
-          // Navigation
           React.createElement('div', { className: 'flex items-center gap-3' },
             React.createElement('button', {
               onClick: () => {
-                if (view === 'monthly') {
+                if (view === 'daily') {
+                  const newDay = new Date(selectedDay);
+                  newDay.setDate(newDay.getDate() - 1);
+                  setSelectedDay(newDay);
+                } else if (view === 'monthly') {
                   const newMonth = new Date(currentMonth);
                   newMonth.setMonth(newMonth.getMonth() - 1);
                   setCurrentMonth(newMonth);
@@ -358,13 +357,19 @@ const DustBustersCalendar = () => {
               className: 'p-2 hover:bg-gray-100 rounded-lg transition-colors'
             }, '←'),
             React.createElement('div', { className: 'text-lg font-semibold text-gray-800 min-w-[200px] text-center' },
-              view === 'monthly'
+              view === 'daily' 
+                ? selectedDay.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+                : view === 'monthly'
                 ? currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
                 : `Week of ${weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
             ),
             React.createElement('button', {
               onClick: () => {
-                if (view === 'monthly') {
+                if (view === 'daily') {
+                  const newDay = new Date(selectedDay);
+                  newDay.setDate(newDay.getDate() + 1);
+                  setSelectedDay(newDay);
+                } else if (view === 'monthly') {
                   const newMonth = new Date(currentMonth);
                   newMonth.setMonth(newMonth.getMonth() + 1);
                   setCurrentMonth(newMonth);
@@ -379,7 +384,6 @@ const DustBustersCalendar = () => {
           )
         ),
 
-        // Region Filter
         React.createElement('div', { className: 'flex flex-wrap gap-2' },
           availableRegions.map(region =>
             React.createElement('button', {
@@ -396,9 +400,64 @@ const DustBustersCalendar = () => {
       )
     ),
 
-    // Calendar Views
     React.createElement('div', { className: 'max-w-7xl mx-auto' },
-      // Weekly View
+      view === 'daily' && (() => {
+        const filteredCleaners = availabilityData
+          .filter(c => selectedRegion === 'all' || (c.regions || [c.region]).some(r => r?.toLowerCase() === selectedRegion.toLowerCase()))
+          .filter(c => !searchQuery || c.name?.toLowerCase().includes(searchQuery.toLowerCase()) || c.fullName?.toLowerCase().includes(searchQuery.toLowerCase()));
+        
+        return React.createElement('div', { className: 'bg-white rounded-xl shadow-sm overflow-hidden' },
+          React.createElement('div', { className: 'overflow-x-auto' },
+            React.createElement('div', { className: 'min-w-[1000px]' },
+              React.createElement('div', { 
+                className: 'grid border-b border-gray-200',
+                style: { gridTemplateColumns: `150px repeat(${filteredCleaners.length}, 1fr)` }
+              },
+                React.createElement('div', { className: 'p-4 bg-gray-50 font-semibold text-gray-700 border-r border-gray-200' }, 'Time'),
+                filteredCleaners.map(cleaner =>
+                  React.createElement('div', {
+                    key: cleaner.id || cleaner.name,
+                    className: 'p-4 bg-gray-50 text-center border-r border-gray-200'
+                  },
+                    React.createElement('div', { className: 'font-semibold text-gray-700' }, cleaner.name),
+                    React.createElement('div', { className: 'text-xs text-gray-500' },
+                      Array.isArray(cleaner.regions) ? cleaner.regions.join(', ') : cleaner.region
+                    )
+                  )
+                )
+              ),
+              hourlySlots.map(hour =>
+                React.createElement('div', {
+                  key: hour,
+                  className: 'grid border-b border-gray-200 hover:bg-gray-50 transition-colors',
+                  style: { gridTemplateColumns: `150px repeat(${filteredCleaners.length}, 1fr)` }
+                },
+                  React.createElement('div', { className: 'p-4 bg-gray-50 border-r border-gray-200 font-semibold text-gray-700' }, hour),
+                  filteredCleaners.map(cleaner => {
+                    const dayPrefix = getDayOfWeekAbbrev(selectedDay);
+                    const status = cleaner[`${dayPrefix}_${hour}`];
+                    const isAvailable = status === 'AVAILABLE';
+                    const isBooked = status?.startsWith('BOOKED');
+                    
+                    return React.createElement('div', {
+                      key: `${cleaner.id || cleaner.name}-${hour}`,
+                      onClick: () => openSlotDetails(selectedDay, hour),
+                      className: `p-4 cursor-pointer border-r border-gray-200 text-center ${
+                        isAvailable ? 'bg-green-50 hover:bg-green-100' : isBooked ? 'bg-red-50 hover:bg-red-100' : 'bg-gray-100'
+                      }`
+                    },
+                      React.createElement('div', { className: `font-bold text-lg ${isAvailable ? 'text-green-600' : isBooked ? 'text-red-600' : 'text-gray-400'}` },
+                        isAvailable ? '✓' : isBooked ? '✗' : '—'
+                      )
+                    );
+                  })
+                )
+              )
+            )
+          )
+        );
+      })(),
+
       view === 'weekly' && React.createElement('div', { className: 'bg-white rounded-xl shadow-sm overflow-hidden' },
         React.createElement('div', { className: 'grid grid-cols-8 border-b border-gray-200' },
           React.createElement('div', { className: 'p-4 bg-gray-50 font-semibold text-gray-700' }, 'Time'),
@@ -442,88 +501,9 @@ const DustBustersCalendar = () => {
             })
           )
         )
-      ),
-
-      // Monthly View
-      view === 'monthly' && React.createElement('div', { className: 'bg-white rounded-xl shadow-sm overflow-hidden' },
-        React.createElement('div', { className: 'grid grid-cols-7 border-b border-gray-200' },
-          ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day =>
-            React.createElement('div', {
-              key: day,
-              className: 'p-3 bg-gray-50 text-center font-semibold text-gray-700'
-            }, day)
-          )
-        ),
-        React.createElement('div', { className: 'grid grid-cols-7' },
-          monthDays.map((date, i) =>
-            React.createElement('div', {
-              key: i,
-              className: `min-h-[120px] p-3 border-b border-r border-gray-200 ${
-                !date ? 'bg-gray-50' : 'hover:bg-gray-50 cursor-pointer'
-              }`
-            },
-              date && React.createElement('div', null,
-                React.createElement('div', { className: 'font-bold text-gray-800 mb-2' }, date.getDate()),
-                (() => {
-                  const stats = getDayStats(date);
-                  return React.createElement('div', { className: 'space-y-1' },
-                    React.createElement('div', { className: 'text-xs' },
-                      React.createElement('span', { className: 'text-green-600 font-semibold' }, stats.available),
-                      React.createElement('span', { className: 'text-gray-500' }, ' avail')
-                    ),
-                    stats.booked > 0 && React.createElement('div', { className: 'text-xs' },
-                      React.createElement('span', { className: 'text-orange-600 font-semibold' }, stats.booked),
-                      React.createElement('span', { className: 'text-gray-500' }, ' booked')
-                    )
-                  );
-                })()
-              )
-            )
-          )
-        )
-      ),
-
-      // Hourly View
-      view === 'hourly' && React.createElement('div', { className: 'bg-white rounded-xl shadow-sm overflow-hidden' },
-        React.createElement('div', { className: 'grid grid-cols-8 border-b border-gray-200' },
-          React.createElement('div', { className: 'p-4 bg-gray-50 font-semibold text-gray-700' }, 'Hour'),
-          weekDates.map((date, i) =>
-            React.createElement('div', {
-              key: i,
-              className: 'p-4 bg-gray-50 text-center'
-            },
-              React.createElement('div', { className: 'font-semibold text-gray-700' }, dayNames[i]),
-              React.createElement('div', { className: 'text-xl text-gray-800 font-bold' }, date.getDate())
-            )
-          )
-        ),
-        hourlySlots.map(hour =>
-          React.createElement('div', {
-            key: hour,
-            className: 'grid grid-cols-8 border-b border-gray-200 hover:bg-gray-50 transition-colors'
-          },
-            React.createElement('div', { className: 'p-3 bg-gray-50 border-r border-gray-200 font-medium text-gray-700' },
-              hour
-            ),
-            weekDates.map((date, i) => {
-              const { available, booked } = getCleanersForSlot(date, hour);
-              return React.createElement('div', {
-                key: i,
-                onClick: () => openSlotDetails(date, hour),
-                className: 'p-3 cursor-pointer hover:bg-blue-50 transition-colors text-center'
-              },
-                React.createElement('span', { className: 'text-lg font-bold text-green-600' }, available.length),
-                booked.length > 0 && React.createElement('span', { className: 'text-sm text-orange-600 ml-2' },
-                  `(${booked.length})`
-                )
-              );
-            })
-          )
-        )
       )
     ),
 
-    // Modal
     showModal && selectedSlot && React.createElement('div', {
       className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-5',
       onClick: () => setShowModal(false)
@@ -548,7 +528,6 @@ const DustBustersCalendar = () => {
         ),
         
         React.createElement('div', { className: 'p-5' },
-          // Summary
           React.createElement('div', { className: 'grid grid-cols-2 gap-4 mb-5' },
             React.createElement('div', { className: 'bg-green-50 rounded-lg p-4' },
               React.createElement('div', { className: 'text-3xl font-bold text-green-600' }, selectedSlot.available.length),
@@ -560,7 +539,6 @@ const DustBustersCalendar = () => {
             )
           ),
 
-          // Available Cleaners
           selectedSlot.available.length > 0 && React.createElement('div', { className: 'mb-5' },
             React.createElement('h3', { className: 'text-lg font-semibold text-gray-800 mb-3' }, '✅ Available Cleaners'),
             React.createElement('div', { className: 'space-y-2' },
@@ -583,7 +561,6 @@ const DustBustersCalendar = () => {
             )
           ),
 
-          // Booked Cleaners
           selectedSlot.booked.length > 0 && React.createElement('div', null,
             React.createElement('h3', { className: 'text-lg font-semibold text-gray-800 mb-3' }, '📅 Booked Cleaners'),
             React.createElement('div', { className: 'space-y-2' },
@@ -629,6 +606,85 @@ const DustBustersCalendar = () => {
   );
 };
 
-// Render the app
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(React.createElement(DustBustersCalendar));
+          )
+        )
+      ),
+
+      view === 'monthly' && React.createElement('div', { className: 'bg-white rounded-xl shadow-sm overflow-hidden' },
+        React.createElement('div', { className: 'grid grid-cols-7 border-b border-gray-200' },
+          ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day =>
+            React.createElement('div', {
+              key: day,
+              className: 'p-3 bg-gray-50 text-center font-semibold text-gray-700'
+            }, day)
+          )
+        ),
+        React.createElement('div', { className: 'grid grid-cols-7' },
+          monthDays.map((date, i) =>
+            React.createElement('div', {
+              key: i,
+              className: `min-h-[120px] p-3 border-b border-r border-gray-200 ${
+                !date ? 'bg-gray-50' : 'hover:bg-gray-50 cursor-pointer'
+              }`,
+              onClick: date ? () => {
+                setSelectedDay(date);
+                setView('daily');
+              } : undefined
+            },
+              date && React.createElement('div', null,
+                React.createElement('div', { className: 'font-bold text-gray-800 mb-2' }, date.getDate()),
+                (() => {
+                  const dayStats = getDayStats(date);
+                  return React.createElement('div', { className: 'space-y-1' },
+                    React.createElement('div', { className: 'text-xs' },
+                      React.createElement('span', { className: 'text-green-600 font-semibold' }, dayStats.available),
+                      React.createElement('span', { className: 'text-gray-500' }, ' avail')
+                    ),
+                    dayStats.booked > 0 && React.createElement('div', { className: 'text-xs' },
+                      React.createElement('span', { className: 'text-orange-600 font-semibold' }, dayStats.booked),
+                      React.createElement('span', { className: 'text-gray-500' }, ' booked')
+                    )
+                  );
+                })()
+              )
+            )
+          )
+        )
+      ),
+
+      view === 'hourly' && React.createElement('div', { className: 'bg-white rounded-xl shadow-sm overflow-hidden' },
+        React.createElement('div', { className: 'grid grid-cols-8 border-b border-gray-200' },
+          React.createElement('div', { className: 'p-4 bg-gray-50 font-semibold text-gray-700' }, 'Hour'),
+          weekDates.map((date, i) =>
+            React.createElement('div', {
+              key: i,
+              className: 'p-4 bg-gray-50 text-center'
+            },
+              React.createElement('div', { className: 'font-semibold text-gray-700' }, dayNames[i]),
+              React.createElement('div', { className: 'text-xl text-gray-800 font-bold' }, date.getDate())
+            )
+          )
+        ),
+        hourlySlots.map(hour =>
+          React.createElement('div', {
+            key: hour,
+            className: 'grid grid-cols-8 border-b border-gray-200 hover:bg-gray-50 transition-colors'
+          },
+            React.createElement('div', { className: 'p-3 bg-gray-50 border-r border-gray-200 font-medium text-gray-700' },
+              hour
+            ),
+            weekDates.map((date, i) => {
+              const { available, booked } = getCleanersForSlot(date, hour);
+              return React.createElement('div', {
+                key: i,
+                onClick: () => openSlotDetails(date, hour),
+                className: 'p-3 cursor-pointer hover:bg-blue-50 transition-colors text-center'
+              },
+                React.createElement('span', { className: 'text-lg font-bold text-green-600' }, available.length),
+                booked.length > 0 && React.createElement('span', { className: 'text-sm text-orange-600 ml-2' },
+                  `(${booked.length})`
+                )
+              );
+            })
