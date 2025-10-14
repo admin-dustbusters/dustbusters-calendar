@@ -241,6 +241,32 @@ const DustBustersCalendar = () => {
     });
     setShowModal(true);
   };
+  
+  // --- NEW: LOGIC TO HANDLE VIEW SWITCHING ---
+  const handleViewChange = (newView) => {
+    if (newView === 'daily') {
+      if (view === 'weekly') {
+        setSelectedDay(currentWeek);
+      } else if (view === 'monthly') {
+        if (selectedDay.getFullYear() !== currentMonth.getFullYear() || selectedDay.getMonth() !== currentMonth.getMonth()) {
+          setSelectedDay(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1));
+        }
+      }
+    } else if (newView === 'weekly') {
+      if (view === 'daily') {
+        setCurrentWeek(getMonday(selectedDay));
+      } else if (view === 'monthly') {
+        setCurrentWeek(getMonday(currentMonth));
+      }
+    } else if (newView === 'monthly') {
+      if (view === 'daily') {
+        setCurrentMonth(selectedDay);
+      } else if (view === 'weekly') {
+        setCurrentMonth(currentWeek);
+      }
+    }
+    setView(newView);
+  };
 
   const availableRegions = useMemo(() => {
     const regions = new Set();
@@ -415,7 +441,7 @@ const DustBustersCalendar = () => {
           ['daily', 'weekly', 'monthly'].map(v =>
             React.createElement('button', {
               key: v,
-              onClick: () => setView(v),
+              onClick: () => handleViewChange(v),
               className: `px-6 py-2.5 rounded-lg font-medium text-sm transition-colors ${
                 view === v ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`
@@ -608,7 +634,7 @@ const DustBustersCalendar = () => {
             return React.createElement('div', {
               key: idx,
               onClick: () => { setSelectedDay(date); setView('daily'); },
-              className: `border-2 rounded-lg p-2 min-h-[100px] cursor-pointer hover:border-blue-500 transition-colors ${isToday ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`
+              className: `border-2 rounded-lg p-2 min-h-[120px] cursor-pointer hover:border-blue-500 transition-colors ${isToday ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`
             },
               React.createElement('div', { className: 'font-semibold text-gray-800 mb-2 text-sm' }, date.getDate()),
               React.createElement('div', { className: 'flex flex-wrap gap-1' },
@@ -619,7 +645,7 @@ const DustBustersCalendar = () => {
                     title: cleaner.name,
                   }, getInitials(cleaner.name))
                 ),
-                availableCleaners.length > 5 && React.createElement('div', { className: 'text-xs text-gray-600 font-medium' }, `+${availableCleaners.length - 5}`)
+                availableCleaners.length > 5 && React.createElement('div', { className: 'w-6 h-6 flex items-center justify-center bg-gray-200 text-gray-600 rounded-full text-xs font-medium' }, `+${availableCleaners.length - 5}`)
               )
             );
           })
