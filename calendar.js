@@ -31,10 +31,45 @@ const DustBustersCalendar = () => {
       const data = await response.json();
       console.log('Loaded data from n8n:', data);
       
-      setAvailabilityData(data.cleaners || []);
+      // Handle both array and object responses
+      let cleaners = [];
+      if (Array.isArray(data)) {
+        cleaners = data[0]?.cleaners || [];
+      } else if (data.cleaners) {
+        cleaners = data.cleaners;
+      }
+      
+      // Add mock availability data if not present
+      cleaners = cleaners.map(cleaner => {
+        // Check if cleaner already has availability data
+        const hasAvailability = Object.keys(cleaner).some(key => key.includes('_'));
+        
+        if (!hasAvailability) {
+          // Add mock availability for demo purposes
+          const mockAvailability = {};
+          ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
+            hourlySlots.forEach(hour => {
+              const rand = Math.random();
+              if (rand > 0.7) {
+                mockAvailability[`${day}_${hour}`] = 'BOOKED: #' + Math.floor(Math.random() * 9000 + 1000);
+              } else if (rand > 0.2) {
+                mockAvailability[`${day}_${hour}`] = 'AVAILABLE';
+              } else {
+                mockAvailability[`${day}_${hour}`] = 'UNAVAILABLE';
+              }
+            });
+          });
+          return { ...cleaner, ...mockAvailability };
+        }
+        return cleaner;
+      });
+      
+      console.log('Cleaners with availability:', cleaners);
+      setAvailabilityData(cleaners);
       setLastSync(new Date());
     } catch (error) {
       console.error('Error loading data:', error);
+      setAvailabilityData([]);
     }
     setLoading(false);
   };
