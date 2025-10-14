@@ -82,7 +82,7 @@ const DustBustersCalendar = () => {
     const month = currentMonth.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const startDay = firstDay.getDay(); // Sunday - 0, Monday - 1, etc.
+    const startDay = firstDay.getDay(); 
     const daysInMonth = lastDay.getDate();
     
     const days = [];
@@ -245,7 +245,9 @@ const DustBustersCalendar = () => {
       React.createElement('div', { className: 'grid grid-cols-4 gap-4' },
         React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-5' },
           React.createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Total Cleaners'),
-          React.createElement('div', { className: 'text-3xl font-bold text-gray-800' }, availabilityData.length)
+          // --- FIX IS HERE ---
+          // Instead of availabilityData.length, we calculate the size of a Set of unique IDs.
+          React.createElement('div', { className: 'text-3xl font-bold text-gray-800' }, new Set(availabilityData.map(c => c.id)).size)
         ),
         React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-5' },
           React.createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Available This Week'),
@@ -346,26 +348,19 @@ const DustBustersCalendar = () => {
         )
       )
     ),
-
-    // Daily View (CORRECTED LOGIC)
     view === 'daily' && React.createElement('div', { className: 'max-w-7xl mx-auto' },
       React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-7 overflow-x-auto' },
         React.createElement('div', { className: 'min-w-[1000px]' },
           (() => {
-            // --- FIX STARTS HERE ---
             const weekMonday = getMonday(selectedDay);
             const weekString = weekMonday.toISOString().split('T')[0];
-
             let filtered = availabilityData
-              .filter(c => c.weekStarting ? c.weekStarting === weekString : true) // Filter by the correct week for the selected day
+              .filter(c => c.weekStarting ? c.weekStarting === weekString : true)
               .filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
               .filter(c => !searchQuery || c.name?.toLowerCase().includes(searchQuery.toLowerCase()) || c.fullName?.toLowerCase().includes(searchQuery.toLowerCase()));
-            // --- FIX ENDS HERE ---
-
             if (filtered.length === 0) {
               return React.createElement('div', { className: 'text-center py-12 text-gray-500' }, 'No cleaners found for this day.');
             }
-            
             return React.createElement('div', { 
               className: 'grid gap-px bg-gray-300 border border-gray-300',
               style: { gridTemplateColumns: `150px repeat(${filtered.length}, 1fr)` }
@@ -385,7 +380,6 @@ const DustBustersCalendar = () => {
                     const status = c[`${dayPrefix}_${hour}`];
                     const isAvailable = status === 'AVAILABLE';
                     const isBooked = status?.startsWith('BOOKED');
-                    
                     return React.createElement('div', {
                       key: `${c.id}-${hour}`,
                       onClick: () => openSlotDetails(selectedDay, hour),
@@ -401,7 +395,6 @@ const DustBustersCalendar = () => {
         )
       )
     ),
-
     view === 'weekly' && React.createElement('div', { className: 'max-w-7xl mx-auto' },
         React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-7 overflow-x-auto' },
             React.createElement('div', { className: 'min-w-[1200px]' },
