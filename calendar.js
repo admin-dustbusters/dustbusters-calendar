@@ -1,3 +1,5 @@
+
+
 const { useState, useEffect } = React;
 const { Calendar, RefreshCw, ChevronLeft, ChevronRight, Search, Sparkles } = window.lucide;
 
@@ -869,3 +871,5 @@ const DustBustersCalendar = () => {
 };
 
 export default DustBustersCalendar;
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(DustBustersCalendar));
