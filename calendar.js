@@ -19,8 +19,7 @@ const DustBustersCalendar = () => {
 
   const [showCleanersModal, setShowCleanersModal] = useState(false);
   const [cleanerModalRegionFilter, setCleanerModalRegionFilter] = useState('all');
-  
-  // New state for smart search
+
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -37,7 +36,7 @@ const DustBustersCalendar = () => {
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     return new Date(d.setDate(diff));
   }
-  
+
   const getInitials = (name) => {
     if (!name || typeof name !== 'string') return '';
     const parts = name.trim().split(' ');
@@ -46,8 +45,7 @@ const DustBustersCalendar = () => {
     }
     return name.substring(0, 2).toUpperCase();
   };
-  
-  // New helper to parse dates from search query
+
   const parseDateFromString = (str) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -80,7 +78,7 @@ const DustBustersCalendar = () => {
     try {
         const parsed = new Date(lowerStr);
         if (!isNaN(parsed.getTime()) && (/\d/.test(lowerStr) || lowerStr.match(/[a-z]{3,}/))) {
-             if (parsed.getFullYear() > 1980) { // Simple sanity check
+             if (parsed.getFullYear() > 1980) {
                 parsed.setHours(0,0,0,0);
                 return parsed;
              }
@@ -101,7 +99,6 @@ const DustBustersCalendar = () => {
     return null;
   };
 
-  // New handler for clicking a search suggestion
   const handleSuggestionClick = (suggestion) => {
     switch (suggestion.type) {
         case 'date':
@@ -170,7 +167,6 @@ const DustBustersCalendar = () => {
     return ['all', ...Array.from(regions).sort()];
   }, [availabilityData]);
   
-  // New effect for generating search suggestions
   useEffect(() => {
     if (searchQuery.length < 2) {
         setSearchSuggestions([]);
@@ -460,7 +456,6 @@ const DustBustersCalendar = () => {
     return emojis[region] || '📍';
   };
 
-  // New render function for the search suggestions popup
   const renderSearchSuggestions = () => {
     if (!showSuggestions || searchSuggestions.length === 0) {
         return null;
@@ -819,14 +814,16 @@ const DustBustersCalendar = () => {
                     React.createElement('div', { className: 'bg-gray-800 text-white p-4 font-semibold text-center text-sm' }, 'Time Slot'),
                     ...dayNames.map((day, idx) => {
                         const date = weekDates[idx];
+                        const isToday = date.toDateString() === new Date().toDateString();
                         return React.createElement('div', { 
                             key: idx, 
                             onClick: () => {
                                 setSelectedDay(date);
                                 setView('daily');
                             },
-                            className: 'bg-gray-800 text-white p-4 font-semibold text-center text-sm cursor-pointer hover:bg-blue-500 transition-colors'
+                            className: `bg-gray-800 text-white p-4 font-semibold text-center text-sm cursor-pointer hover:bg-blue-500 transition-colors relative ${isToday ? 'bg-blue-700' : ''}`
                         },
+                            isToday && React.createElement('span', {className: 'absolute top-1 right-2 text-xs font-bold text-yellow-300'}, 'TODAY'),
                             day,
                             React.createElement('div', { className: 'text-xs font-normal opacity-80 mt-1' },
                                 date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -842,10 +839,11 @@ const DustBustersCalendar = () => {
                         ),
                         ...weekDates.map((date, dayIdx) => {
                             const { available, booked, total } = getCleanersForSlot(date, block.id);
+                            const isToday = date.toDateString() === new Date().toDateString();
                             return React.createElement('div', {
                                 key: dayIdx,
                                 onClick: () => openSlotDetails(date, block.id),
-                                className: 'bg-white p-3 min-h-[100px] relative cursor-pointer hover:bg-gray-50 transition-colors'
+                                className: `bg-white p-3 min-h-[100px] relative cursor-pointer hover:bg-gray-50 transition-colors ${isToday ? 'bg-blue-50' : ''}`
                             },
                                 total > 0 && React.createElement('div', { className: 'absolute top-2 right-2 bg-blue-500 text-white text-xs font-semibold px-2 py-1 rounded-full' }, total),
                                 React.createElement('div', { className: 'flex flex-wrap gap-1' },
@@ -887,9 +885,11 @@ const DustBustersCalendar = () => {
             return React.createElement('div', {
               key: idx,
               onClick: () => { setSelectedDay(date); setView('daily'); },
-              className: `border-2 rounded-lg p-2 min-h-[120px] cursor-pointer hover:border-blue-500 transition-colors ${isToday ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`
+              className: `border-2 rounded-lg p-2 min-h-[120px] cursor-pointer hover:border-blue-500 transition-colors ${isToday ? 'border-blue-500 bg-blue-100' : 'border-gray-200 bg-white'}`
             },
-              React.createElement('div', { className: 'font-semibold text-gray-800 mb-2 text-sm' }, date.getDate()),
+              React.createElement('div', { 
+                  className: `font-semibold mb-2 text-sm ${isToday ? 'text-blue-600' : 'text-gray-800'}` 
+              }, date.getDate()),
               React.createElement('div', { className: 'flex flex-wrap gap-1' },
                 ...availableCleaners.slice(0, 5).map(cleaner => 
                   React.createElement('div', {
