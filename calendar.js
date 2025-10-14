@@ -6,7 +6,6 @@ const { Calendar: CalendarIcon, Users, Clock, Filter, RefreshCw, ChevronLeft, Ch
 const N8N_WEBHOOK_URL = 'http://dustbusters-n8n.duckdns.org:5678/webhook/calendar-data';
 // ---------------------
 
-// Helper function to get the Monday of a given date
 function getMonday(date) {
     const d = new Date(date);
     const day = d.getDay();
@@ -16,7 +15,6 @@ function getMonday(date) {
     return monday;
 }
 
-// Helper function to add days to a date
 function addDays(date, days) {
     const result = new Date(date);
     result.setDate(result.getDate() + days);
@@ -24,7 +22,6 @@ function addDays(date, days) {
 }
 
 const DustBustersCalendar = () => {
-    // State Management
     const [view, setView] = useState('weekly');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [cleaners, setCleaners] = useState([]);
@@ -42,7 +39,6 @@ const DustBustersCalendar = () => {
 
     const dayAbbrev = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    // Data Fetching Logic
     const fetchData = async () => {
         setLoading(true);
         setError(null);
@@ -55,7 +51,7 @@ const DustBustersCalendar = () => {
                 setCleaners(data.cleaners);
                 setLastSync(new Date());
             } else {
-                throw new Error("Invalid data format from API. Expected an object with a 'cleaners' array.");
+                throw new Error("Invalid data format from API.");
             }
         } catch (e) {
             console.error("Failed to fetch data:", e);
@@ -67,16 +63,14 @@ const DustBustersCalendar = () => {
 
     useEffect(() => {
         fetchData();
-        const interval = setInterval(fetchData, 60000); // Refresh every 60 seconds
+        const interval = setInterval(fetchData, 60000);
         return () => clearInterval(interval);
     }, []);
 
-    // Filtering and Data Processing
     const filteredCleaners = useMemo(() => {
         return cleaners.filter(c => {
             const matchesRegion = selectedRegion === 'all' || c.primaryRegion?.toLowerCase() === selectedRegion;
             const matchesSearch = !searchQuery || c.fullName?.toLowerCase().includes(searchQuery.toLowerCase());
-            // Important: We only show cleaners who are currently hired
             return c.status === 'Hired' && matchesRegion && matchesSearch;
         });
     }, [cleaners, selectedRegion, searchQuery]);
@@ -89,15 +83,12 @@ const DustBustersCalendar = () => {
         return { available };
     };
 
-    // Loading and Error States
     if (error) {
         return (
             <div className="p-8 text-center bg-red-100 text-red-700 rounded-lg max-w-2xl mx-auto mt-10">
                 <h2 className="font-bold text-lg">Failed to Load Calendar</h2>
                 <p className="mt-2">{error}</p>
-                <button onClick={fetchData} className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg">
-                    Try Again
-                </button>
+                <button onClick={fetchData} className="mt-4 px-4 py-2 bg-red-500 text-white rounded-lg">Try Again</button>
             </div>
         );
     }
@@ -113,7 +104,6 @@ const DustBustersCalendar = () => {
         );
     }
     
-    // UI Rendering
     const currentWeekMonday = getMonday(currentDate);
     const weekDates = Array.from({ length: 7 }, (_, i) => addDays(currentWeekMonday, i));
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
