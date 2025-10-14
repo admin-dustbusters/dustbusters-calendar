@@ -245,8 +245,6 @@ const DustBustersCalendar = () => {
       React.createElement('div', { className: 'grid grid-cols-4 gap-4' },
         React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-5' },
           React.createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Total Cleaners'),
-          // --- FIX IS HERE ---
-          // Instead of availabilityData.length, we calculate the size of a Set of unique IDs.
           React.createElement('div', { className: 'text-3xl font-bold text-gray-800' }, new Set(availabilityData.map(c => c.id)).size)
         ),
         React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-5' },
@@ -302,11 +300,14 @@ const DustBustersCalendar = () => {
               const emoji = region === 'all' ? '' : getRegionEmoji(region.charAt(0).toUpperCase() + region.slice(1));
               const label = region === 'all' ? 'All Regions' : `${emoji} ${region.charAt(0).toUpperCase() + region.slice(1)}`;
               
+              // --- FIX IS HERE ---
               return React.createElement('button', {
                 key: region,
-                onClick: () => setSelectedRegion(region),
+                // FIX 1: Set state to lowercase for consistent filtering
+                onClick: () => setSelectedRegion(region.toLowerCase()),
                 className: `px-6 py-2.5 rounded-lg font-medium text-sm transition-colors ${
-                  selectedRegion === region 
+                  // FIX 2: Compare selected state with the lowercase version for styling
+                  selectedRegion === region.toLowerCase() 
                     ? `bg-${color}-500 text-white` 
                     : `bg-${color}-50 text-${color}-700 hover:bg-${color}-100`
                 }`
