@@ -618,7 +618,7 @@ const DustBustersCalendar = () => {
           disabled: loading,
           className: 'flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 text-xs sm:text-base'
         },
-          loading ? '↻' : '↻
+          loading ? '↻' : '↻'
         )
       )
     ),
