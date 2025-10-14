@@ -17,7 +17,6 @@ const DustBustersCalendar = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerMonth, setDatePickerMonth] = useState(new Date());
 
-  // State for the new Cleaners List modal
   const [showCleanersModal, setShowCleanersModal] = useState(false);
   const [cleanerModalRegionFilter, setCleanerModalRegionFilter] = useState('all');
 
@@ -74,9 +73,16 @@ const DustBustersCalendar = () => {
   }, []);
   
   useEffect(() => {
+    const lowerQuery = searchQuery.toLowerCase();
     const filteredCleaners = availabilityData
       .filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
-      .filter(c => !searchQuery || c.name?.toLowerCase().includes(searchQuery.toLowerCase()) || c.fullName?.toLowerCase().includes(searchQuery.toLowerCase()));
+      .filter(c => 
+        !lowerQuery || 
+        c.name?.toLowerCase().includes(lowerQuery) || 
+        c.fullName?.toLowerCase().includes(lowerQuery) ||
+        c.region?.toLowerCase().includes(lowerQuery) ||
+        c.notes?.toLowerCase().includes(lowerQuery)
+      );
 
     let datesToScan = [];
     if (view === 'daily') {
@@ -185,16 +191,19 @@ const DustBustersCalendar = () => {
     const dayPrefix = getDayOfWeekAbbrev(date);
     const weekMonday = getMonday(date);
     const weekString = weekMonday.toISOString().split('T')[0];
-    let filtered = availabilityData.filter(c => c.weekStarting ? c.weekStarting === weekString : true);
-    if (selectedRegion !== 'all') {
-      filtered = filtered.filter(c => c.region?.toLowerCase() === selectedRegion);
-    }
-    if (searchQuery) {
-      filtered = filtered.filter(c => 
-        c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.fullName?.toLowerCase().includes(searchQuery.toLowerCase())
+    const lowerQuery = searchQuery.toLowerCase();
+
+    let filtered = availabilityData
+      .filter(c => c.weekStarting ? c.weekStarting === weekString : true)
+      .filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
+      .filter(c => 
+        !lowerQuery || 
+        c.name?.toLowerCase().includes(lowerQuery) || 
+        c.fullName?.toLowerCase().includes(lowerQuery) ||
+        c.region?.toLowerCase().includes(lowerQuery) ||
+        c.notes?.toLowerCase().includes(lowerQuery)
       );
-    }
+
     const isHourly = hourlySlots.includes(blockIdOrHour);
     if (isHourly) {
       const fieldName = `${dayPrefix}_${blockIdOrHour}`;
@@ -210,9 +219,16 @@ const DustBustersCalendar = () => {
   };
   
   const getAvailableCleanersForDay = (date) => {
+    const lowerQuery = searchQuery.toLowerCase();
     const filteredCleaners = availabilityData
-        .filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
-        .filter(c => !searchQuery || c.name?.toLowerCase().includes(searchQuery.toLowerCase()) || c.fullName?.toLowerCase().includes(searchQuery.toLowerCase()));
+      .filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
+      .filter(c => 
+        !lowerQuery || 
+        c.name?.toLowerCase().includes(lowerQuery) || 
+        c.fullName?.toLowerCase().includes(lowerQuery) ||
+        c.region?.toLowerCase().includes(lowerQuery) ||
+        c.notes?.toLowerCase().includes(lowerQuery)
+      );
 
     const dayPrefix = getDayOfWeekAbbrev(date);
     const weekString = getMonday(date).toISOString().split('T')[0];
@@ -259,7 +275,7 @@ const DustBustersCalendar = () => {
       if (view === 'daily') {
         setCurrentWeek(getMonday(selectedDay));
       } else if (view === 'monthly') {
-        setCurrentWeek(getMonday(currentMonth));
+        setCurrentWeek(getMonday(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)));
       }
     } else if (newView === 'monthly') {
       if (view === 'daily') {
@@ -594,10 +610,17 @@ const DustBustersCalendar = () => {
           (() => {
             const weekMonday = getMonday(selectedDay);
             const weekString = weekMonday.toISOString().split('T')[0];
+            const lowerQuery = searchQuery.toLowerCase();
             let filtered = availabilityData
               .filter(c => c.weekStarting ? c.weekStarting === weekString : true)
               .filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
-              .filter(c => !searchQuery || c.name?.toLowerCase().includes(searchQuery.toLowerCase()) || c.fullName?.toLowerCase().includes(searchQuery.toLowerCase()));
+              .filter(c => 
+                !lowerQuery || 
+                c.name?.toLowerCase().includes(lowerQuery) || 
+                c.fullName?.toLowerCase().includes(lowerQuery) ||
+                c.region?.toLowerCase().includes(lowerQuery) ||
+                c.notes?.toLowerCase().includes(lowerQuery)
+              );
             if (filtered.length === 0) {
               return React.createElement('div', { className: 'text-center py-12 text-gray-500' }, 'No cleaners found for this day.');
             }
