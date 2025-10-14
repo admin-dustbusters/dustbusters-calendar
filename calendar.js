@@ -17,7 +17,6 @@ const DustBustersCalendar = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerMonth, setDatePickerMonth] = useState(new Date());
 
-  // State for the new dynamic stat cards
   const [dynamicStats, setDynamicStats] = useState({
     totalCleaners: 0,
     cleanersAvailable: 0,
@@ -61,14 +60,11 @@ const DustBustersCalendar = () => {
     return () => clearInterval(interval);
   }, []);
   
-  // --- NEW: useEffect for calculating dynamic stats ---
   useEffect(() => {
-    // 1. First, apply the UI filters (region and search)
     const filteredCleaners = availabilityData
       .filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
       .filter(c => !searchQuery || c.name?.toLowerCase().includes(searchQuery.toLowerCase()) || c.fullName?.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    // 2. Determine the date range based on the current view
     let datesToScan = [];
     if (view === 'daily') {
       datesToScan = [selectedDay];
@@ -91,12 +87,10 @@ const DustBustersCalendar = () => {
       datesToScan = monthDays;
     }
 
-    // 3. Calculate stats based on the filtered cleaners and date range
     let openSlots = 0;
     let bookedSlots = 0;
     const availableCleanerIds = new Set();
     
-    // Create a map of week strings to relevant cleaners to avoid re-filtering in the loop
     const weekCleanerMap = new Map();
     filteredCleaners.forEach(cleaner => {
         const weekKey = cleaner.weekStarting || 'no_week';
@@ -124,7 +118,6 @@ const DustBustersCalendar = () => {
       });
     });
     
-    // 4. Update the state
     setDynamicStats({
       totalCleaners: new Set(filteredCleaners.map(c => c.id)).size,
       cleanersAvailable: availableCleanerIds.size,
@@ -300,7 +293,6 @@ const DustBustersCalendar = () => {
     );
   }
   
-  // Dynamic label for the "Available" card
   const availableLabel =
     view === 'daily' ? 'Available Today' :
     view === 'monthly' ? 'Available This Month' :
@@ -340,7 +332,6 @@ const DustBustersCalendar = () => {
         }, 'Ask AI')
       )
     ),
-    // --- UI uses the new dynamicStats state ---
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'grid grid-cols-4 gap-4' },
         React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-5' },
@@ -505,14 +496,23 @@ const DustBustersCalendar = () => {
             React.createElement('div', { className: 'min-w-[1200px]' },
                 React.createElement('div', { className: 'grid grid-cols-8 gap-px bg-gray-300 border border-gray-300 mb-px' },
                     React.createElement('div', { className: 'bg-gray-800 text-white p-4 font-semibold text-center text-sm' }, 'Time Slot'),
-                    ...dayNames.map((day, idx) =>
-                        React.createElement('div', { key: idx, className: 'bg-gray-800 text-white p-4 font-semibold text-center text-sm' },
+                    // --- FINAL CHANGE IS HERE ---
+                    ...dayNames.map((day, idx) => {
+                        const date = weekDates[idx];
+                        return React.createElement('div', { 
+                            key: idx, 
+                            onClick: () => {
+                                setView('daily');
+                                setSelectedDay(date);
+                            },
+                            className: 'bg-gray-800 text-white p-4 font-semibold text-center text-sm cursor-pointer hover:bg-blue-500 transition-colors'
+                        },
                             day,
                             React.createElement('div', { className: 'text-xs font-normal opacity-80 mt-1' },
-                                weekDates[idx].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                             )
-                        )
-                    )
+                        );
+                    })
                 ),
                 ...timeBlocks.map((block) =>
                     React.createElement('div', { key: block.id, className: 'grid grid-cols-8 gap-px bg-gray-300 border-l border-r border-b border-gray-300' },
