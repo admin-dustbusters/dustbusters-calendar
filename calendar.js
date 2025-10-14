@@ -22,6 +22,8 @@ const DustBustersCalendar = () => {
 
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  
+  const [networkError, setNetworkError] = useState(null);
 
   const [dynamicStats, setDynamicStats] = useState({
     totalCleaners: 0,
@@ -126,6 +128,7 @@ const DustBustersCalendar = () => {
 
   const loadAvailabilityData = async () => {
     setLoading(true);
+    setNetworkError(null);
     try {
       const response = await fetch(N8N_WEBHOOK_URL);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -141,6 +144,7 @@ const DustBustersCalendar = () => {
     } catch (error) {
       console.error('Error loading data:', error);
       setAvailabilityData([]);
+      setNetworkError(`Failed to load data. Please check the connection and webhook URL. Error: ${error.message}`);
     }
     setLoading(false);
   };
@@ -631,7 +635,9 @@ const DustBustersCalendar = () => {
       React.createElement('div', { className: 'text-center' },
         React.createElement('div', { className: 'text-4xl mb-4' }, '🧹'),
         React.createElement('div', { className: 'text-xl font-semibold text-gray-700' }, 'Loading DustBusters Calendar...'),
-        React.createElement('div', { className: 'text-sm text-gray-500 mt-2' }, 'Connecting to your data...')
+        networkError 
+            ? React.createElement('div', { className: 'mt-4 p-3 bg-red-100 text-red-700 text-sm rounded-md' }, networkError)
+            : React.createElement('div', { className: 'text-sm text-gray-500 mt-2' }, 'Connecting to your data...')
       )
     );
   }
@@ -642,6 +648,9 @@ const DustBustersCalendar = () => {
     'Available This Week';
 
   return React.createElement('div', { className: 'min-h-screen bg-gray-50 p-2 md:p-5' },
+    networkError && React.createElement('div', { className: 'max-w-7xl mx-auto mb-4' }, 
+        React.createElement('div', { className: 'p-4 bg-red-100 text-red-800 rounded-lg shadow-md' }, networkError)
+    ),
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-4' },
       React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4 sm:p-5 flex items-center justify-between' },
         React.createElement('div', { className: 'flex items-center gap-3' },
@@ -740,7 +749,6 @@ const DustBustersCalendar = () => {
               availableRegions.map(region => {
                 const color = getRegionColor(region);
                 const emoji = region === 'all' ? '' : getRegionEmoji(region.charAt(0).toUpperCase() + region.slice(1));
-                const label = region === 'all' ? 'All' : React.createElement('span', {className: 'sm:hidden'}, emoji);
                 const fullLabel = region === 'all' ? 'All Regions' : `${emoji} ${region.charAt(0).toUpperCase() + region.slice(1)}`;
                 
                 return React.createElement('button', {
@@ -751,7 +759,7 @@ const DustBustersCalendar = () => {
                       ? `bg-${color}-500 text-white` 
                       : `bg-${color}-50 text-${color}-700 hover:bg-${color}-100`
                   }`
-                }, React.createElement('span', {className:'hidden sm:inline'}, fullLabel), React.createElement('span', {className:'sm:hidden'}, label));
+                }, fullLabel);
               })
             )
           ),
