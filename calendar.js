@@ -1,7 +1,9 @@
 const { useState, useEffect, useMemo } = React;
 
-// YOUR WEBHOOK URL - Update this!
+// Update this line only
 const N8N_WEBHOOK_URL = 'https://dustbusters-n8n.duckdns.org/webhook/calendar-data';
+
+// Keep the rest of your calendar.js exactly the same
 
 const DustBustersCalendar = () => {
   const [currentWeek, setCurrentWeek] = useState(getMonday(new Date()));
