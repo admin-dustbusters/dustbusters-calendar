@@ -408,7 +408,6 @@ const DustBustersCalendar = () => {
     setShowModal(true);
   };
   
-  // Smart date persistence when changing views
   const handleViewChange = (newView) => {
     if (view === 'daily') {
       setCurrentWeek(getMonday(selectedDay));
@@ -573,7 +572,6 @@ const DustBustersCalendar = () => {
       );
   };
   
-  // New: Specific renderer for mobile daily view
   const renderDailyViewMobile = () => {
     const weekMonday = getMonday(selectedDay);
     const weekString = weekMonday.toISOString().split('T')[0];
@@ -604,7 +602,7 @@ const DustBustersCalendar = () => {
                         React.createElement('div', { className: 'text-xs text-gray-500' }, c.region)
                     ),
                     React.createElement('button', {
-                      onClick: () => openSlotDetails(selectedDay, 'morning'), // Example action
+                      onClick: () => openSlotDetails(selectedDay, 'morning'), 
                       className: 'px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-md'
                     }, 'Details')
                 ),
@@ -775,7 +773,7 @@ const DustBustersCalendar = () => {
                     setDatePickerMonth(initialDate);
                     setShowDatePicker(!showDatePicker);
                 },
-                className: 'px-2 py-2 font-semibold text-gray-800 w-36 sm:w-auto sm:min-w-[250px] text-center text-sm cursor-pointer hover:bg-gray-100 rounded-md'
+                className: 'px-2 py-2 font-semibold text-gray-800 w-36 sm:w-auto sm:min-w-[250px] text-center text-sm cursor-pointer hover:bg-gray-100 rounded-md border border-gray-300'
             },
               view === 'daily' ? selectedDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) :
               view === 'weekly' ? `Week of ${weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` :
