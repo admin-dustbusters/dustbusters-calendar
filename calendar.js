@@ -368,6 +368,7 @@ const DustBustersCalendar = () => {
   );
 };
 
+// Render
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(React.createElement(DustBustersCalendar));React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'grid grid-cols-4 gap-4' },
