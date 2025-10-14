@@ -14,6 +14,10 @@ const DustBustersCalendar = () => {
   const [lastSync, setLastSync] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  // State for the new date picker
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerMonth, setDatePickerMonth] = useState(new Date());
+
 
   function getMonday(date) {
     const d = new Date(date);
@@ -76,13 +80,14 @@ const DustBustersCalendar = () => {
     }
     return dates;
   };
-
-  const getMonthDays = () => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
+  
+  // Generic function to get calendar days for any month
+  const getCalendarDays = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const startDay = firstDay.getDay(); 
+    const startDay = firstDay.getDay(); // Sunday - 0
     const daysInMonth = lastDay.getDate();
     
     const days = [];
@@ -92,7 +97,7 @@ const DustBustersCalendar = () => {
   };
 
   const weekDates = getWeekDates();
-  const monthDays = getMonthDays();
+  const monthDays = getCalendarDays(currentMonth);
 
   const getCleanersForSlot = (date, blockIdOrHour) => {
     const dayPrefix = getDayOfWeekAbbrev(date);
@@ -170,7 +175,6 @@ const DustBustersCalendar = () => {
 
   const stats = getStats();
 
-  // --- FIX 1: MORE ROBUST REGION DETECTION ---
   const availableRegions = useMemo(() => {
     const regions = new Set();
     availabilityData.forEach(cleaner => {
@@ -188,27 +192,18 @@ const DustBustersCalendar = () => {
     return ['all', ...Array.from(regions).sort()];
   }, [availabilityData]);
 
-  // --- FIX 2: UPDATED AND DYNAMIC COLOR ASSIGNMENT ---
   const getRegionColor = (region) => {
     const lowerRegion = region?.toLowerCase();
-    
-    // Your specific color preferences
     const specificColors = {
-      'all': 'teal',
-      'charlotte': 'yellow',
-      'raleigh': 'amber', // Using amber for a brownish color
-      'triad': 'purple',
+      'all': 'teal', 'charlotte': 'yellow', 'raleigh': 'amber', 'triad': 'purple',
     };
-
-    if (specificColors[lowerRegion]) {
-      return specificColors[lowerRegion];
-    }
-    
-    // Fallback colors for any new regions
+    if (specificColors[lowerRegion]) return specificColors[lowerRegion];
     const fallbackColors = ['pink', 'indigo', 'cyan', 'lime', 'orange'];
     let hash = 0;
-    for (let i = 0; i < lowerRegion.length; i++) {
+    if (lowerRegion) {
+      for (let i = 0; i < lowerRegion.length; i++) {
         hash = lowerRegion.charCodeAt(i) + ((hash << 5) - hash);
+      }
     }
     const index = Math.abs(hash % fallbackColors.length);
     return fallbackColors[index];
@@ -216,10 +211,43 @@ const DustBustersCalendar = () => {
 
   const getRegionEmoji = (region) => {
     const emojis = {
-      'Charlotte': '🔵', 'Triad': '🟢', 'Raleigh': '🟡', 'Asheville': '🟣',
-      'Wilmington': '🟠', 'Durham': '🩷'
+      'Charlotte': '🔵', 'Triad': '🟢', 'Raleigh': '🟡', 'Asheville': '🟣', 'Wilmington': '🟠', 'Durham': '🩷'
     };
     return emojis[region] || '📍';
+  };
+
+  const renderDatePicker = () => {
+    const days = getCalendarDays(datePickerMonth);
+    return React.createElement('div', { className: 'absolute top-full mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-20 p-4' },
+      React.createElement('div', { className: 'flex items-center justify-between mb-3' },
+        React.createElement('button', {
+          onClick: () => setDatePickerMonth(new Date(datePickerMonth.getFullYear(), datePickerMonth.getMonth() - 1)),
+          className: 'px-2 py-1 hover:bg-gray-100 rounded-full'
+        }, '‹'),
+        React.createElement('div', { className: 'font-semibold text-sm' }, datePickerMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })),
+        React.createElement('button', {
+          onClick: () => setDatePickerMonth(new Date(datePickerMonth.getFullYear(), datePickerMonth.getMonth() + 1)),
+          className: 'px-2 py-1 hover:bg-gray-100 rounded-full'
+        }, '›')
+      ),
+      React.createElement('div', { className: 'grid grid-cols-7 gap-1 text-center text-xs text-gray-500' },
+        ...['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => React.createElement('div', { key: d, className: 'p-1' }, d))
+      ),
+      React.createElement('div', { className: 'grid grid-cols-7 gap-1' },
+        ...days.map((date, idx) => {
+          if (!date) return React.createElement('div', { key: `empty-${idx}` });
+          const isSelected = date.toDateString() === selectedDay.toDateString();
+          return React.createElement('button', {
+            key: idx,
+            onClick: () => {
+              setSelectedDay(date);
+              setShowDatePicker(false);
+            },
+            className: `py-1 text-sm rounded-full ${isSelected ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`
+          }, date.getDate());
+        })
+      )
+    );
   };
 
   if (loading && availabilityData.length === 0) {
@@ -336,7 +364,7 @@ const DustBustersCalendar = () => {
               }, label);
             })
           ),
-          React.createElement('div', { className: 'flex items-center gap-2' },
+          React.createElement('div', { className: 'flex items-center gap-2 relative' },
             React.createElement('button', {
               onClick: () => {
                 if (view === 'daily') setSelectedDay(new Date(selectedDay.getTime() - 86400000));
@@ -345,7 +373,16 @@ const DustBustersCalendar = () => {
               },
               className: 'px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600'
             }, '←'),
-            React.createElement('div', { className: 'px-4 py-2 font-semibold text-gray-800 min-w-[250px] text-center text-sm' },
+            // Date display is now a button that opens the picker
+            React.createElement('button', { 
+                onClick: () => {
+                    if (view === 'daily' || view === 'monthly') {
+                        setDatePickerMonth(view === 'daily' ? selectedDay : currentMonth);
+                        setShowDatePicker(!showDatePicker);
+                    }
+                },
+                className: `px-4 py-2 font-semibold text-gray-800 min-w-[250px] text-center text-sm ${view === 'daily' || view === 'monthly' ? 'cursor-pointer hover:bg-gray-100 rounded-md' : ''}`
+             },
               view === 'daily' ? selectedDay.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) :
               view === 'weekly' ? `Week of ${weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` :
               currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -366,7 +403,9 @@ const DustBustersCalendar = () => {
                 else setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
               },
               className: 'px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600'
-            }, '→')
+            }, '→'),
+            // Render the date picker if showDatePicker is true
+            showDatePicker && renderDatePicker()
           )
         )
       )
