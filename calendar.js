@@ -19,7 +19,7 @@ const DustBustersCalendar = () => {
 
   const [showCleanersModal, setShowCleanersModal] = useState(false);
   const [cleanerModalRegionFilter, setCleanerModalRegionFilter] = useState('all');
-  
+
   // States for new stat modals
   const [showAvailableModal, setShowAvailableModal] = useState(false);
   const [showBookedModal, setShowBookedModal] = useState(false);
