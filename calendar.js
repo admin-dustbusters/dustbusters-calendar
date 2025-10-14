@@ -1,7 +1,6 @@
 const { useState, useEffect, useMemo } = React;
 
-// YOUR WEBHOOK URL - Update this!
-const N8N_WEBHOOK_URL = 'https://dustbusters-n8n.duckdns.org:5678/webhook/calendar-data';
+const N8N_WEBHOOK_URL = 'https://dustbusters-n8n.duckdns.org/webhook/calendar-data';
 
 const DustBustersCalendar = () => {
   const [currentWeek, setCurrentWeek] = useState(getMonday(new Date()));
@@ -164,14 +163,12 @@ const DustBustersCalendar = () => {
 
   const stats = getStats();
 
-  // DYNAMIC REGIONS - Auto-updates based on cleaner data
   const availableRegions = useMemo(() => {
     const regions = new Set();
     availabilityData.forEach(cleaner => {
       if (cleaner.region) {
         regions.add(cleaner.region);
       }
-      // Also check regions array if it exists
       if (cleaner.regions && Array.isArray(cleaner.regions)) {
         cleaner.regions.forEach(r => regions.add(r));
       }
@@ -179,7 +176,6 @@ const DustBustersCalendar = () => {
     return ['all', ...Array.from(regions).sort()];
   }, [availabilityData]);
 
-  // Region color mapping
   const getRegionColor = (region) => {
     const colors = {
       'all': 'teal',
@@ -217,7 +213,6 @@ const DustBustersCalendar = () => {
   }
 
   return React.createElement('div', { className: 'min-h-screen bg-gray-50 p-5' },
-    // Header
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-5 flex items-center justify-between' },
         React.createElement('div', { className: 'flex items-center gap-3' },
@@ -237,7 +232,6 @@ const DustBustersCalendar = () => {
       )
     ),
 
-    // AI Banner
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'bg-gradient-to-r from-purple-600 to-purple-800 rounded-xl shadow-sm p-4 flex items-center gap-4 text-white' },
         React.createElement('div', { className: 'text-2xl' }, '🤖'),
@@ -252,7 +246,6 @@ const DustBustersCalendar = () => {
       )
     ),
 
-    // Stats
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'grid grid-cols-4 gap-4' },
         React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-5' },
@@ -276,7 +269,6 @@ const DustBustersCalendar = () => {
       )
     ),
 
-    // Search
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-5' },
         React.createElement('div', { className: 'relative' },
@@ -295,7 +287,6 @@ const DustBustersCalendar = () => {
       )
     ),
 
-    // View Selector & Navigation
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' },
         React.createElement('div', { className: 'flex gap-3 mb-4' },
@@ -363,7 +354,6 @@ const DustBustersCalendar = () => {
       )
     ),
 
-    // DAILY VIEW
     view === 'daily' && React.createElement('div', { className: 'max-w-7xl mx-auto' },
       React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-7 overflow-x-auto' },
         React.createElement('div', { className: 'min-w-[1000px]' },
@@ -391,7 +381,42 @@ const DustBustersCalendar = () => {
             },
               React.createElement('div', { className: 'bg-gray-800 text-white p-4 font-semibold text-center text-sm' }, 'Time'),
               filtered.map(c =>
-                React.createElement('div', { key: c.id, className: 'bg-gray-800 text-white p-4 font-semibold text-center text-sm' },
+                React.createElement('div', { className: 'text-sm text-gray-600' }, c.phone || 'No phone'),
+                React.createElement('div', { className: 'text-sm text-gray-600' }, c.rate || 'Rate not set')
+              )
+            )
+          )
+        ),
+        selectedSlot.booked.length > 0 && React.createElement('div', { className: 'mb-6' },
+          React.createElement('h3', { className: 'font-semibold text-red-700 mb-3 text-lg' }, 
+            `🔴 Booked (${selectedSlot.booked.length})`
+          ),
+          React.createElement('div', { className: 'space-y-2' },
+            selectedSlot.booked.map(c =>
+              React.createElement('div', { key: c.id, className: 'bg-red-50 rounded-lg p-3 opacity-60' },
+                React.createElement('div', { className: 'font-medium text-gray-900' }, c.fullName || c.name),
+                React.createElement('div', { className: 'text-xs text-red-600' }, 'Already booked')
+              )
+            )
+          )
+        ),
+        React.createElement('div', { className: 'flex gap-3 mt-6' },
+          React.createElement('button', {
+            onClick: () => alert('AI booking assistant coming soon!'),
+            className: 'flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700'
+          }, '🤖 Book with AI Assist'),
+          React.createElement('button', {
+            onClick: () => setShowModal(false),
+            className: 'px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300'
+          }, 'Close')
+        )
+      )
+    )
+  );
+};
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(DustBustersCalendar));div', { key: c.id, className: 'bg-gray-800 text-white p-4 font-semibold text-center text-sm' },
                   React.createElement('div', { className: 'font-medium' }, c.name),
                   React.createElement('div', { className: 'text-xs font-normal opacity-80 mt-1' }, c.region)
                 )
@@ -427,7 +452,6 @@ const DustBustersCalendar = () => {
       )
     ),
 
-    // WEEKLY VIEW
     view === 'weekly' && React.createElement('div', { className: 'max-w-7xl mx-auto' },
       React.createElement('div', { className: 'bg-white rounded-xl shadow-sm overflow-hidden' },
         React.createElement('div', { 
@@ -486,7 +510,6 @@ const DustBustersCalendar = () => {
       )
     ),
 
-    // MONTHLY VIEW
     view === 'monthly' && React.createElement('div', { className: 'max-w-7xl mx-auto' },
       React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-7' },
         React.createElement('div', { className: 'grid grid-cols-7 gap-2' },
@@ -527,6 +550,7 @@ const DustBustersCalendar = () => {
         )
       )
     ),
+
     showModal && selectedSlot && React.createElement('div', { 
       className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4',
       onClick: () => setShowModal(false)
@@ -552,39 +576,4 @@ const DustBustersCalendar = () => {
                   React.createElement('div', { className: 'font-semibold text-gray-900' }, c.fullName || c.name),
                   React.createElement('div', { className: 'text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded' }, c.region)
                 ),
-                React.createElement('div', { className: 'text-sm text-gray-600' }, c.phone || 'No phone'),
-                React.createElement('div', { className: 'text-sm text-gray-600' }, c.rate || 'Rate not set')
-              )
-            )
-          )
-        ),
-        selectedSlot.booked.length > 0 && React.createElement('div', { className: 'mb-6' },
-          React.createElement('h3', { className: 'font-semibold text-red-700 mb-3 text-lg' }, 
-            `🔴 Booked (${selectedSlot.booked.length})`
-          ),
-          React.createElement('div', { className: 'space-y-2' },
-            selectedSlot.booked.map(c =>
-              React.createElement('div', { key: c.id, className: 'bg-red-50 rounded-lg p-3 opacity-60' },
-                React.createElement('div', { className: 'font-medium text-gray-900' }, c.fullName || c.name),
-                React.createElement('div', { className: 'text-xs text-red-600' }, 'Already booked')
-              )
-            )
-          )
-        ),
-        React.createElement('div', { className: 'flex gap-3 mt-6' },
-          React.createElement('button', {
-            onClick: () => alert('AI booking assistant coming soon!'),
-            className: 'flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700'
-          }, '🤖 Book with AI Assist'),
-          React.createElement('button', {
-            onClick: () => setShowModal(false),
-            className: 'px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300'
-          }, 'Close')
-        )
-      )
-    )
-  );
-};
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(React.createElement(DustBustersCalendar));
+                React.createElement('
