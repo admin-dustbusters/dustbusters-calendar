@@ -49,33 +49,28 @@ return new Date(d.setDate(diff));
 
 
 const loadAvailabilityData = async () => {
+  setLoading(true);
+  try {
+    const response = await fetch(N8N_WEBHOOK_URL);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const data = await response.json();
+    console.log('Loaded data from n8n:', data);
 
-setLoading(true);
+    // FIX: Handle both array and object formats
+    let cleaners = [];
+    if (Array.isArray(data)) {
+      // Webhook returns [{ cleaners: [...] }]
+      cleaners = data[0]?.cleaners || [];
+    } else if (data.cleaners) {
+      cleaners = data.cleaners;
+    }
 
-try {
-
-const response = await fetch(N8N_WEBHOOK_URL);
-
-if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-
-const data = await response.json();
-
-console.log('Loaded data from n8n:', data);
-
-
-setAvailabilityData(data.cleaners || []);
-
-setLastSync(new Date());
-
-} catch (error) {
-
-console.error('Error loading data:', error);
-
-}
-
-setLoading(false);
-
+    setAvailabilityData(cleaners);
+    setLastSync(new Date());
+  } catch (error) {
+    console.error('Error loading data:', error);
+  }
+  setLoading(false);
 };
 
 
