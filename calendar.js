@@ -608,9 +608,6 @@ const DustBustersCalendar = () => {
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(React.createElement(DustBustersCalendar));
-          )
-        )
-      ),
 
       view === 'monthly' && React.createElement('div', { className: 'bg-white rounded-xl shadow-sm overflow-hidden' },
         React.createElement('div', { className: 'grid grid-cols-7 border-b border-gray-200' },
