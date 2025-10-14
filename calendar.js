@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, RefreshCw, ChevronLeft, ChevronRight, Search, Sparkles } from 'lucide-react';
+const { useState, useEffect } = React;
+const { Calendar, RefreshCw, ChevronLeft, ChevronRight, Search, Sparkles } = window.lucide;
 
 const DustBustersCalendar = () => {
   const [currentWeek, setCurrentWeek] = useState(getMonday(new Date()));
