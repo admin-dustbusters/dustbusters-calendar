@@ -170,23 +170,48 @@ const DustBustersCalendar = () => {
 
   const stats = getStats();
 
+  // --- FIX 1: MORE ROBUST REGION DETECTION ---
   const availableRegions = useMemo(() => {
     const regions = new Set();
     availabilityData.forEach(cleaner => {
-      if (cleaner.region) regions.add(cleaner.region);
+      if (cleaner.region && typeof cleaner.region === 'string' && cleaner.region.trim() !== '') {
+        regions.add(cleaner.region);
+      }
       if (cleaner.regions && Array.isArray(cleaner.regions)) {
-        cleaner.regions.forEach(r => regions.add(r));
+        cleaner.regions.forEach(r => {
+          if (r && typeof r === 'string' && r.trim() !== '') {
+            regions.add(r);
+          }
+        });
       }
     });
     return ['all', ...Array.from(regions).sort()];
   }, [availabilityData]);
 
+  // --- FIX 2: UPDATED AND DYNAMIC COLOR ASSIGNMENT ---
   const getRegionColor = (region) => {
-    const colors = {
-      'all': 'teal', 'charlotte': 'blue', 'triad': 'green', 'raleigh': 'yellow',
-      'asheville': 'purple', 'wilmington': 'orange', 'durham': 'pink', 'default': 'gray'
+    const lowerRegion = region?.toLowerCase();
+    
+    // Your specific color preferences
+    const specificColors = {
+      'all': 'teal',
+      'charlotte': 'yellow',
+      'raleigh': 'amber', // Using amber for a brownish color
+      'triad': 'purple',
     };
-    return colors[region?.toLowerCase()] || colors.default;
+
+    if (specificColors[lowerRegion]) {
+      return specificColors[lowerRegion];
+    }
+    
+    // Fallback colors for any new regions
+    const fallbackColors = ['pink', 'indigo', 'cyan', 'lime', 'orange'];
+    let hash = 0;
+    for (let i = 0; i < lowerRegion.length; i++) {
+        hash = lowerRegion.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash % fallbackColors.length);
+    return fallbackColors[index];
   };
 
   const getRegionEmoji = (region) => {
@@ -300,13 +325,10 @@ const DustBustersCalendar = () => {
               const emoji = region === 'all' ? '' : getRegionEmoji(region.charAt(0).toUpperCase() + region.slice(1));
               const label = region === 'all' ? 'All Regions' : `${emoji} ${region.charAt(0).toUpperCase() + region.slice(1)}`;
               
-              // --- FIX IS HERE ---
               return React.createElement('button', {
                 key: region,
-                // FIX 1: Set state to lowercase for consistent filtering
                 onClick: () => setSelectedRegion(region.toLowerCase()),
                 className: `px-6 py-2.5 rounded-lg font-medium text-sm transition-colors ${
-                  // FIX 2: Compare selected state with the lowercase version for styling
                   selectedRegion === region.toLowerCase() 
                     ? `bg-${color}-500 text-white` 
                     : `bg-${color}-50 text-${color}-700 hover:bg-${color}-100`
