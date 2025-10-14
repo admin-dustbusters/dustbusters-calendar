@@ -25,6 +25,14 @@ const DustBustersCalendar = () => {
   
   // NEW: Mobile menu state
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+useEffect(() => {
+  const checkMobile = () => setIsMobile(window.innerWidth < 640);
+  checkMobile(); // Check on mount
+  window.addEventListener('resize', checkMobile);
+  return () => window.removeEventListener('resize', checkMobile);
+}, []);
 
   const [dynamicStats, setDynamicStats] = useState({
     totalCleaners: 0,
@@ -877,14 +885,14 @@ const DustBustersCalendar = () => {
                                             key: cleaner.id,
                                             className: 'inline-block px-1.5 sm:px-2.5 py-0.5 sm:py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium hover:scale-105 transition-transform cursor-pointer',
                                             title: cleaner.name
-                                        }, window.innerWidth < 640 ? getInitials(cleaner.name) : cleaner.name)
+                                        }, isMobile ? getInitials(cleaner.name) : cleaner.name)
                                     ),
                                     ...booked.slice(0, 2).map((cleaner) =>
                                         React.createElement('div', {
                                             key: cleaner.id,
                                             className: 'inline-block px-1.5 sm:px-2.5 py-0.5 sm:py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium',
                                             title: cleaner.name
-                                        }, window.innerWidth < 640 ? getInitials(cleaner.name) : cleaner.name)
+                                        }, isMobile ? getInitials(cleaner.name) : cleaner.name)
                                     ),
                                     total === 0 && React.createElement('div', { className: 'text-gray-400 text-xs italic' }, 'None')
                                 )
