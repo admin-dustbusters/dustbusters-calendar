@@ -225,10 +225,14 @@ const DustBustersCalendar = () => {
     return ['all', ...Array.from(regions).sort()];
   }, [availabilityData]);
 
+  // --- UPDATED COLORS ---
   const getRegionColor = (region) => {
     const lowerRegion = region?.toLowerCase();
     const specificColors = {
-      'all': 'teal', 'charlotte': 'yellow', 'raleigh': 'amber', 'triad': 'purple',
+      'all': 'teal',
+      'charlotte': 'yellow',
+      'raleigh': 'stone', // Using stone for a distinct brown
+      'triad': 'purple',
     };
     if (specificColors[lowerRegion]) return specificColors[lowerRegion];
     const fallbackColors = ['pink', 'indigo', 'cyan', 'lime', 'orange'];
@@ -242,9 +246,15 @@ const DustBustersCalendar = () => {
     return fallbackColors[index];
   };
 
+  // --- UPDATED EMOJIS ---
   const getRegionEmoji = (region) => {
     const emojis = {
-      'Charlotte': '🔵', 'Triad': '🟢', 'Raleigh': '🟡', 'Asheville': '🟣', 'Wilmington': '🟠', 'Durham': '🩷'
+      'Charlotte': '🟡',
+      'Triad': '🟣',
+      'Raleigh': '🟤',
+      'Asheville': '⛰️',
+      'Wilmington': '🌊',
+      'Durham': '🐂'
     };
     return emojis[region] || '📍';
   };
@@ -496,7 +506,6 @@ const DustBustersCalendar = () => {
             React.createElement('div', { className: 'min-w-[1200px]' },
                 React.createElement('div', { className: 'grid grid-cols-8 gap-px bg-gray-300 border border-gray-300 mb-px' },
                     React.createElement('div', { className: 'bg-gray-800 text-white p-4 font-semibold text-center text-sm' }, 'Time Slot'),
-                    // --- FINAL CHANGE IS HERE ---
                     ...dayNames.map((day, idx) => {
                         const date = weekDates[idx];
                         return React.createElement('div', { 
