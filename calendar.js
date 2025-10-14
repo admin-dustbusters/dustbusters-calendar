@@ -17,6 +17,10 @@ const DustBustersCalendar = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerMonth, setDatePickerMonth] = useState(new Date());
 
+  // State for the new Cleaners List modal
+  const [showCleanersModal, setShowCleanersModal] = useState(false);
+  const [cleanerModalRegionFilter, setCleanerModalRegionFilter] = useState('all');
+
   const [dynamicStats, setDynamicStats] = useState({
     totalCleaners: 0,
     cleanersAvailable: 0,
@@ -242,7 +246,6 @@ const DustBustersCalendar = () => {
     setShowModal(true);
   };
   
-  // --- NEW: LOGIC TO HANDLE VIEW SWITCHING ---
   const handleViewChange = (newView) => {
     if (newView === 'daily') {
       if (view === 'weekly') {
@@ -348,6 +351,73 @@ const DustBustersCalendar = () => {
       )
     );
   };
+  
+  const renderCleanersModal = () => {
+      const uniqueCleanersMap = new Map();
+      availabilityData.forEach(c => {
+          if (!uniqueCleanersMap.has(c.id)) {
+              uniqueCleanersMap.set(c.id, c);
+          }
+      });
+      const uniqueCleaners = Array.from(uniqueCleanersMap.values());
+      
+      const groupedByRegion = uniqueCleaners.reduce((acc, cleaner) => {
+          const region = cleaner.region || 'Uncategorized';
+          if (!acc[region]) {
+              acc[region] = [];
+          }
+          acc[region].push(cleaner);
+          return acc;
+      }, {});
+
+      const regionsForFilter = ['all', ...Object.keys(groupedByRegion).sort()];
+
+      return React.createElement('div', {
+          className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4',
+          onClick: () => setShowCleanersModal(false)
+        },
+        React.createElement('div', {
+            className: 'bg-white rounded-xl max-w-4xl w-full max-h-[90vh] flex flex-col p-8',
+            onClick: (e) => e.stopPropagation()
+          },
+          React.createElement('div', { className: 'flex-shrink-0' },
+              React.createElement('h2', { className: 'text-2xl font-bold text-gray-800 mb-4' }, 'Cleaner Directory'),
+              React.createElement('div', { className: 'flex gap-2 mb-6 border-b pb-4' },
+                ...regionsForFilter.map(region => {
+                    const isSelected = cleanerModalRegionFilter === region;
+                    return React.createElement('button', {
+                        key: region,
+                        onClick: () => setCleanerModalRegionFilter(region),
+                        className: `px-4 py-2 text-sm font-semibold rounded-lg ${isSelected ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`
+                    }, region)
+                })
+              )
+          ),
+          React.createElement('div', { className: 'overflow-y-auto' },
+            ...Object.keys(groupedByRegion).sort().filter(region => cleanerModalRegionFilter === 'all' || region === cleanerModalRegionFilter).map(region => 
+                React.createElement('div', { key: region, className: 'mb-8' },
+                    React.createElement('h3', { className: 'text-lg font-bold text-gray-700 mb-4 border-b pb-2' }, region),
+                    React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
+                      ...groupedByRegion[region].map(c => 
+                        React.createElement('div', { key: c.id, className: 'bg-gray-50 rounded-lg p-4 border border-gray-200' },
+                            React.createElement('div', { className: 'font-semibold text-gray-900 mb-2' }, c.fullName || c.name),
+                            React.createElement('div', { className: 'text-sm text-gray-600' }, '📞 ', c.phone || 'No phone'),
+                            React.createElement('div', { className: 'text-sm text-gray-600' }, '✉️ ', c.email || 'No email'),
+                            React.createElement('div', { className: 'text-sm text-gray-600' }, '💵 ', c.rate ? `${c.rate}/hour` : 'Rate not set'),
+                            React.createElement('div', { className: 'text-sm text-gray-500 mt-2 pt-2 border-t' }, 'Notes: ', c.notes || 'No notes.')
+                        )
+                      )
+                    )
+                )
+            )
+          ),
+          React.createElement('button', {
+            onClick: () => setShowCleanersModal(false),
+            className: 'mt-6 flex-shrink-0 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 self-center'
+          }, 'Close')
+        )
+      );
+  };
 
   if (loading && availabilityData.length === 0) {
     return React.createElement('div', { className: 'min-h-screen bg-gray-50 flex items-center justify-center' },
@@ -400,7 +470,13 @@ const DustBustersCalendar = () => {
     ),
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-5' },
       React.createElement('div', { className: 'grid grid-cols-4 gap-4' },
-        React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-5' },
+        React.createElement('div', { 
+            className: 'bg-white rounded-xl shadow-sm p-5 cursor-pointer hover:bg-gray-50 transition-colors',
+            onClick: () => {
+                setCleanerModalRegionFilter('all');
+                setShowCleanersModal(true);
+            }
+          },
           React.createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Total Cleaners'),
           React.createElement('div', { className: 'text-3xl font-bold text-gray-800' }, dynamicStats.totalCleaners)
         ),
@@ -569,8 +645,8 @@ const DustBustersCalendar = () => {
                         return React.createElement('div', { 
                             key: idx, 
                             onClick: () => {
-                                setView('daily');
                                 setSelectedDay(date);
+                                setView('daily');
                             },
                             className: 'bg-gray-800 text-white p-4 font-semibold text-center text-sm cursor-pointer hover:bg-blue-500 transition-colors'
                         },
@@ -699,7 +775,8 @@ const DustBustersCalendar = () => {
           }, 'Close')
         )
       )
-    )
+    ),
+    showCleanersModal && renderCleanersModal()
   );
 };
 
