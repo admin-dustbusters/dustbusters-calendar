@@ -49,6 +49,24 @@ const DustBustersCalendar = () => {
     return name.substring(0, 2).toUpperCase();
   };
 
+  const parseBookingDetails = (bookingString) => {
+    if (!bookingString || !bookingString.startsWith('BOOKED')) {
+      return null;
+    }
+    
+    const parts = bookingString.split('|').map(p => p.trim());
+    if (parts.length < 5) return null;
+    
+    const jobNumberMatch = parts[0].match(/#(\d+)/);
+    return {
+      jobNumber: jobNumberMatch ? jobNumberMatch[1] : 'Unknown',
+      customer: parts[1] || 'Unknown Customer',
+      region: parts[2] || 'Unknown Region',
+      timeSlot: parts[3] || 'Unknown Time',
+      cleaners: parts[4] || 'Unknown Cleaners'
+    };
+  };
+
   const parseDateFromString = (str) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -86,7 +104,7 @@ const DustBustersCalendar = () => {
                 return parsed;
              }
         }
-    } catch(e) { /* ignore parse errors */ }
+    } catch(e) { }
     
     const match = lowerStr.match(/^(\d{1,2})\/(\d{1,2})$/);
     if (match) {
@@ -124,7 +142,7 @@ const DustBustersCalendar = () => {
     setShowSuggestions(false);
   };
 
-  const hourlySlots = ['8am', '9am', '10am', '11am', '12pm', '1pm', '2pm', '3pm', '4pm', '5pm', '6pm', '7pm', '8pm'];
+  const hourlySlots = ['8am', '9am', '10am', '11am', '12pm', '1pm', '2pm', '3pm', '4pm', '5pm', '6pm', '7pm', '8pm', '9pm', '10pm', '11pm'];
 
   const loadAvailabilityData = async () => {
     setLoading(true);
@@ -303,7 +321,7 @@ const DustBustersCalendar = () => {
   const timeBlocks = [
     { id: 'morning', label: 'Morning', emoji: '🌅', time: '8am-12pm', hours: ['8am', '9am', '10am', '11am'] },
     { id: 'afternoon', label: 'Afternoon', emoji: '☀️', time: '12pm-5pm', hours: ['12pm', '1pm', '2pm', '3pm', '4pm'] },
-    { id: 'evening', label: 'Evening', emoji: '🌙', time: '5pm-8pm', hours: ['5pm', '6pm', '7pm', '8pm'] },
+    { id: 'evening', label: 'Evening', emoji: '🌙', time: '5pm-11pm', hours: ['5pm', '6pm', '7pm', '8pm', '9pm', '10pm', '11pm'] },
   ];
 
   const getDayOfWeekAbbrev = (date) => {
@@ -830,6 +848,41 @@ const DustBustersCalendar = () => {
                 if (filtered.length === 0) {
                   return React.createElement('div', { className: 'text-center py-12 text-gray-500' }, 'No cleaners found for this day.');
                 }
+                
+                const dayPrefix = getDayOfWeekAbbrev(selectedDay);
+                
+                const mergedBookings = filtered.map(c => {
+                  const bookingGroups = [];
+                  let currentGroup = null;
+                  
+                  hourlySlots.forEach((hour, idx) => {
+                    const status = c[`${dayPrefix}_${hour}`];
+                    const bookingDetails = parseBookingDetails(status);
+                    
+                    if (bookingDetails) {
+                      if (!currentGroup || currentGroup.jobNumber !== bookingDetails.jobNumber) {
+                        currentGroup = {
+                          ...bookingDetails,
+                          startHour: hour,
+                          startIdx: idx,
+                          endHour: hour,
+                          endIdx: idx,
+                          slots: [hour]
+                        };
+                        bookingGroups.push(currentGroup);
+                      } else {
+                        currentGroup.endHour = hour;
+                        currentGroup.endIdx = idx;
+                        currentGroup.slots.push(hour);
+                      }
+                    } else {
+                      currentGroup = null;
+                    }
+                  });
+                  
+                  return { cleaner: c, bookingGroups };
+                });
+                
                 return React.createElement('div', { 
                   className: 'grid gap-px bg-gray-300 border border-gray-300',
                   style: { gridTemplateColumns: `150px repeat(${filtered.length}, 1fr)` }
@@ -841,22 +894,44 @@ const DustBustersCalendar = () => {
                       React.createElement('div', { className: 'text-xs font-normal opacity-80 mt-1' }, c.region)
                     )
                   ),
-                  ...hourlySlots.flatMap(hour =>
+                  ...hourlySlots.flatMap((hour, hourIdx) =>
                     [
                       React.createElement('div', { key: `time-${hour}`, className: 'bg-gray-700 text-white p-3 sm:p-4 flex items-center justify-center font-medium text-sm' }, hour),
-                      ...filtered.map(c => {
-                        const dayPrefix = getDayOfWeekAbbrev(selectedDay);
-                        const status = c[`${dayPrefix}_${hour}`];
+                      ...mergedBookings.map(({ cleaner, bookingGroups }, cleanerIdx) => {
+                        const status = cleaner[`${dayPrefix}_${hour}`];
                         const isAvailable = status === 'AVAILABLE';
                         const isBooked = status?.startsWith('BOOKED');
+                        
+                        const bookingGroup = bookingGroups.find(bg => bg.slots.includes(hour));
+                        const isFirstSlotOfBooking = bookingGroup && bookingGroup.startHour === hour;
+                        const spanCount = bookingGroup ? bookingGroup.slots.length : 1;
+                        
+                        if (bookingGroup && !isFirstSlotOfBooking) {
+                          return null;
+                        }
+                        
+                        if (isFirstSlotOfBooking && bookingGroup) {
+                          return React.createElement('div', {
+                            key: `${cleaner.id}-${hour}`,
+                            onClick: () => openSlotDetails(selectedDay, hour),
+                            className: 'bg-red-500 p-2 cursor-pointer hover:opacity-80 transition-all flex flex-col items-center justify-center text-white',
+                            style: { gridRow: `span ${spanCount}` }
+                          },
+                            React.createElement('div', { className: 'font-bold text-sm' }, `Job #${bookingGroup.jobNumber}`),
+                            React.createElement('div', { className: 'text-xs mt-1' }, bookingGroup.customer),
+                            React.createElement('div', { className: 'text-xs opacity-90' }, bookingGroup.timeSlot),
+                            React.createElement('div', { className: 'text-xs opacity-75 mt-1' }, bookingGroup.cleaners)
+                          );
+                        }
+                        
                         return React.createElement('div', {
-                          key: `${c.id}-${hour}`,
+                          key: `${cleaner.id}-${hour}`,
                           onClick: () => openSlotDetails(selectedDay, hour),
-                          className: `p-3 sm:p-4 cursor-pointer hover:opacity-80 transition-all flex items-center justify-center ${isAvailable ? 'bg-green-500' : isBooked ? 'bg-red-500' : 'bg-gray-300'}`
+                          className: `p-3 sm:p-4 cursor-pointer hover:opacity-80 transition-all flex items-center justify-center ${isAvailable ? 'bg-green-500' : 'bg-gray-300'}`
                         },
-                          React.createElement('div', { className: 'text-white text-center font-bold text-lg' }, isAvailable ? '✓' : isBooked ? '✗' : '—')
+                          React.createElement('div', { className: 'text-white text-center font-bold text-lg' }, isAvailable ? '✓' : '—')
                         );
-                      })
+                      }).filter(Boolean)
                     ]
                   )
                 );
@@ -990,13 +1065,43 @@ const DustBustersCalendar = () => {
         ),
         selectedSlot.booked.length > 0 && React.createElement('div', { className: 'mb-6' },
           React.createElement('h3', { className: 'font-semibold text-red-700 mb-3 text-lg' }, `🔴 Booked (${selectedSlot.booked.length})`),
-          React.createElement('div', { className: 'space-y-2' },
-            selectedSlot.booked.map(c =>
-              React.createElement('div', { key: c.id, className: 'bg-red-50 rounded-lg p-3 opacity-60' },
-                React.createElement('div', { className: 'font-medium text-gray-900' }, c.fullName || c.name),
-                React.createElement('div', { className: 'text-xs text-red-600' }, 'Already booked')
-              )
-            )
+          React.createElement('div', { className: 'space-y-3' },
+            selectedSlot.booked.map(c => {
+              const dayPrefix = getDayOfWeekAbbrev(selectedSlot.date);
+              const firstBookedHour = selectedSlot.isHourly 
+                ? selectedSlot.block.label 
+                : selectedSlot.block.hours.find(h => c[`${dayPrefix}_${h}`]?.startsWith('BOOKED'));
+              
+              const bookingString = c[`${dayPrefix}_${firstBookedHour}`];
+              const bookingDetails = parseBookingDetails(bookingString);
+              
+              return React.createElement('div', { key: c.id, className: 'bg-red-50 rounded-lg p-4 border-2 border-red-200' },
+                React.createElement('div', { className: 'flex justify-between items-start mb-2' },
+                  React.createElement('div', { className: 'font-semibold text-gray-900' }, c.fullName || c.name),
+                  React.createElement('div', { className: 'text-xs px-2 py-1 bg-red-200 text-red-800 rounded font-bold' }, 
+                    bookingDetails ? `Job #${bookingDetails.jobNumber}` : 'Booked'
+                  )
+                ),
+                bookingDetails && React.createElement('div', { className: 'space-y-1 mt-3 text-sm' },
+                  React.createElement('div', { className: 'text-gray-700' },
+                    React.createElement('span', { className: 'font-semibold' }, '👤 Customer: '),
+                    bookingDetails.customer
+                  ),
+                  React.createElement('div', { className: 'text-gray-700' },
+                    React.createElement('span', { className: 'font-semibold' }, '📍 Region: '),
+                    bookingDetails.region
+                  ),
+                  React.createElement('div', { className: 'text-gray-700' },
+                    React.createElement('span', { className: 'font-semibold' }, '⏰ Time: '),
+                    bookingDetails.timeSlot
+                  ),
+                  React.createElement('div', { className: 'text-gray-700' },
+                    React.createElement('span', { className: 'font-semibold' }, '🧹 Cleaners: '),
+                    bookingDetails.cleaners
+                  )
+                )
+              );
+            })
           )
         ),
         React.createElement('div', { className: 'flex flex-col sm:flex-row gap-3 mt-6' },
