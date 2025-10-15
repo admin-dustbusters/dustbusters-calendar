@@ -224,60 +224,66 @@ const DustBustersCalendar = () => {
   }, [searchQuery, availabilityData, availableRegions]);
 
   useEffect(() => {
-      // --- Stats Calculation (Corrected to include sticky notes) ---
-      const lowerQuery = searchQuery.toLowerCase();
-      const filteredData = availabilityData
+    // Stats calculation logic remains from your working version
+    const lowerQuery = searchQuery.toLowerCase();
+    const filteredCleaners = availabilityData
         .filter(c => selectedRegion === 'all' || (c.regions && c.regions.some(r => r.toLowerCase() === selectedRegion)) || c.region?.toLowerCase() === selectedRegion)
-        .filter(c => !lowerQuery || c.name?.toLowerCase().includes(lowerQuery) || c.fullName?.toLowerCase().includes(lowerQuery) || (c.job && c.job.customer?.toLowerCase().includes(lowerQuery)) || c.notes?.toLowerCase().includes(lowerQuery));
+        .filter(c =>
+            !lowerQuery ||
+            c.name?.toLowerCase().includes(lowerQuery) ||
+            c.fullName?.toLowerCase().includes(lowerQuery) ||
+            (c.job && c.job.customer?.toLowerCase().includes(lowerQuery)) ||
+            c.notes?.toLowerCase().includes(lowerQuery)
+        );
+    
+    let datesToScan = [];
+    if (view === 'daily') datesToScan = [selectedDay];
+    else if (view === 'weekly') datesToScan = getWeekDates();
+    else if (view === 'monthly') {
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        for (let i = 1; i <= daysInMonth; i++) datesToScan.push(new Date(year, month, i));
+    }
 
-      let datesToScan = [];
-      if (view === 'daily') datesToScan = [selectedDay];
-      else if (view === 'weekly') datesToScan = getWeekDates();
-      else if (view === 'monthly') {
-          const year = currentMonth.getFullYear();
-          const month = currentMonth.getMonth();
-          const daysInMonth = new Date(year, month + 1, 0).getDate();
-          for (let i = 1; i <= daysInMonth; i++) datesToScan.push(new Date(year, month, i));
-      }
+    let openSlots = 0;
+    let bookedSlots = 0;
+    const availableCleanerIds = new Set();
+    
+    datesToScan.forEach(date => {
+        const dayPrefix = getDayOfWeekAbbrev(date);
+        const { available, booked } = getCleanersForSlot(date, 'allDay');
+        
+        available.forEach(c => availableCleanerIds.add(c.id));
+        
+        booked.forEach(item => {
+            if (item.hasSchedule === false) {
+                bookedSlots += item.job.slots.length;
+            } else {
+                hourlySlots.forEach(hour => {
+                    if (item[`${dayPrefix}_${hour}`]?.startsWith('BOOKED')) {
+                        bookedSlots++;
+                    }
+                });
+            }
+        });
 
-      let openSlots = 0;
-      let bookedSlots = 0;
-      const availableCleanerIds = new Set();
-      
-      datesToScan.forEach(date => {
-          const dayPrefix = getDayOfWeekAbbrev(date);
-          const { available, booked } = getCleanersForSlot(date, 'allDay');
-          
-          available.forEach(c => availableCleanerIds.add(c.id));
-          
-          booked.forEach(item => {
-              if (item.hasSchedule === false) {
-                  bookedSlots += item.job.slots.length;
-              } else {
-                  hourlySlots.forEach(hour => {
-                      if (item[`${dayPrefix}_${hour}`]?.startsWith('BOOKED')) {
-                          bookedSlots++;
-                      }
-                  });
-              }
-          });
+        available.forEach(cleaner => {
+            hourlySlots.forEach(hour => {
+                if (cleaner[`${dayPrefix}_${hour}`] === 'AVAILABLE') {
+                    openSlots++;
+                }
+            });
+        });
+    });
 
-          available.forEach(cleaner => {
-              hourlySlots.forEach(hour => {
-                  if (cleaner[`${dayPrefix}_${hour}`] === 'AVAILABLE') {
-                      openSlots++;
-                  }
-              });
-          });
-      });
-
-      setDynamicStats({
-          totalCleaners: new Set(filteredData.map(c => c.id || c.name)).size,
-          cleanersAvailable: availableCleanerIds.size,
-          bookedSlots,
-          openSlots,
-      });
-  }, [view, selectedDay, currentWeek, currentMonth, availabilityData, selectedRegion, searchQuery]);
+    setDynamicStats({
+        totalCleaners: new Set(filteredCleaners.map(c => c.id || c.name)).size,
+        cleanersAvailable: availableCleanerIds.size,
+        bookedSlots,
+        openSlots,
+    });
+}, [view, selectedDay, currentWeek, currentMonth, availabilityData, selectedRegion, searchQuery]);
 
 
   const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -427,74 +433,6 @@ const DustBustersCalendar = () => {
     };
     return emojis[region] || '📍';
   };
-
-  const renderSearchSuggestions = () => {
-    if (!showSuggestions || searchSuggestions.length === 0) {
-      return null;
-    }
-    return React.createElement('div', { className: 'absolute top-full w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-30 overflow-hidden' },
-      React.createElement('ul', { className: 'divide-y divide-gray-100' },
-        ...searchSuggestions.map((suggestion, index) =>
-          React.createElement('li', { key: index },
-            React.createElement('button', {
-              className: 'w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700',
-              onClick: () => handleSuggestionClick(suggestion)
-            }, suggestion.label)
-          )
-        )
-      )
-    );
-  };
-
-  const renderDatePicker = () => {
-    const days = getCalendarDays(datePickerMonth);
-    return React.createElement('div', { className: 'absolute top-full mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-20 p-4' },
-      React.createElement('div', { className: 'flex items-center justify-between mb-3' },
-        React.createElement('button', {
-          onClick: () => setDatePickerMonth(new Date(datePickerMonth.getFullYear(), datePickerMonth.getMonth() - 1)),
-          className: 'px-2 py-1 hover:bg-gray-100 rounded-full'
-        }, '‹'),
-        React.createElement('div', { className: 'font-semibold text-sm' }, datePickerMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })),
-        React.createElement('button', {
-          onClick: () => setDatePickerMonth(new Date(datePickerMonth.getFullYear(), datePickerMonth.getMonth() + 1)),
-          className: 'px-2 py-1 hover:bg-gray-100 rounded-full'
-        }, '›')
-      ),
-      React.createElement('div', { className: 'grid grid-cols-7 gap-1 text-center text-xs text-gray-500' },
-        ...['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => React.createElement('div', { key: i, className: 'p-1' }, d))
-      ),
-      React.createElement('div', { className: 'grid grid-cols-7 gap-1' },
-        ...days.map((date, idx) => {
-          if (!date) return React.createElement('div', { key: `empty-${idx}` });
-          const isSelected = date.toDateString() === selectedDay.toDateString();
-          return React.createElement('button', {
-            key: idx,
-            onClick: () => {
-              if (view === 'daily') {
-                setSelectedDay(date);
-              } else if (view === 'weekly') {
-                setCurrentWeek(getMonday(date));
-              } else {
-                setCurrentMonth(date);
-              }
-              setShowDatePicker(false);
-            },
-            className: `py-1 text-sm rounded-full ${isSelected ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`
-          }, date.getDate());
-        })
-      )
-    );
-  };
-  
-  const renderCleanersModal = () => {
-    // This function can be pasted from your working code
-    return null; // Placeholder
-  };
-  
-  const renderDailyViewMobile = () => {
-    // This function can be pasted from your working code
-    return null; // Placeholder
-  };
   
   const renderDailyView = () => {
     const dayPrefix = getDayOfWeekAbbrev(selectedDay);
@@ -505,37 +443,9 @@ const DustBustersCalendar = () => {
       return React.createElement('div', { className: 'text-center py-12 text-gray-500' }, 'No cleaners found for this day.');
     }
 
-    const mergedData = allItemsForDay.map(c => {
-      const bookingGroups = [];
-      let currentGroup = null;
-      hourlySlots.forEach((hour) => {
-        let bookingDetails = null;
-        if (c.hasSchedule === false && c.job && c.job.date === selectedDay.toISOString().split('T')[0] && c.job.slots.includes(hour)) {
-          bookingDetails = {
-            jobNumber: c.job.jobNumber, customer: c.job.customer, timeSlot: c.job.timeSlot, cleaners: c.job.cleanerName
-          };
-        } else if (c.weekStarting) {
-          const status = c[`${dayPrefix}_${hour}`];
-          bookingDetails = parseBookingDetails(status);
-        }
-
-        if (bookingDetails) {
-          if (!currentGroup || currentGroup.jobNumber !== bookingDetails.jobNumber) {
-            currentGroup = { ...bookingDetails, startHour: hour, slots: [hour] };
-            bookingGroups.push(currentGroup);
-          } else {
-            currentGroup.slots.push(hour);
-          }
-        } else {
-          currentGroup = null;
-        }
-      });
-      return { cleaner: c, bookingGroups };
-    });
-
     return React.createElement('div', {
-        className: 'grid bg-gray-200 border border-gray-200',
-        style: { gridTemplateColumns: `150px repeat(${allItemsForDay.length}, 1fr)`, gap: '1px' }
+        className: 'grid gap-px bg-gray-300 border border-gray-300',
+        style: { gridTemplateColumns: `150px repeat(${allItemsForDay.length}, 1fr)` }
       },
       React.createElement('div', { className: 'bg-gray-800 text-white p-2 sm:p-4 font-semibold text-center text-sm' }, 'Time'),
       ...allItemsForDay.map(c =>
@@ -545,39 +455,35 @@ const DustBustersCalendar = () => {
         )
       ),
       ...hourlySlots.flatMap((hour) => [
-        React.createElement('div', { key: `time-${hour}`, className: 'bg-gray-700 text-white p-3 sm:p-4 flex items-center justify-center font-medium text-sm'}, hour),
-        ...mergedData.map(({ cleaner, bookingGroups }) => {
-          const bookingGroup = bookingGroups.find(bg => bg.slots.includes(hour));
-          if (bookingGroup && bookingGroup.startHour !== hour) return null;
+        React.createElement('div', { key: `time-${hour}`, className: 'bg-gray-700 text-white p-3 sm:p-4 flex items-center justify-center font-medium text-sm' }, hour),
+        ...allItemsForDay.map(c => {
+          let isAvailable = false;
+          let isBooked = false;
 
-          if (bookingGroup) {
-            const spanCount = bookingGroup.slots.length;
-            return React.createElement('div', {
-              key: `${cleaner.id || cleaner.name}-${hour}`,
-              onClick: () => openSlotDetails(selectedDay, hour),
-              className: 'bg-red-500 p-2 cursor-pointer hover:opacity-80 transition-all flex flex-col items-center justify-center text-white relative',
-              style: { gridRow: `span ${spanCount}` }
-            },
-              React.createElement('div', { className: 'font-bold text-sm' }, `Job #${bookingGroup.jobNumber}`),
-              React.createElement('div', { className: 'text-xs mt-1' }, bookingGroup.customer),
-              React.createElement('div', { className: 'text-xs opacity-90' }, bookingGroup.timeSlot)
-            );
+          if (c.hasSchedule === false && c.job) {
+            if (c.job.date === selectedDay.toISOString().split('T')[0] && c.job.slots.includes(hour)) {
+              isBooked = true;
+            }
+          } else {
+            const status = c[`${dayPrefix}_${hour}`];
+            if (status === 'AVAILABLE') isAvailable = true;
+            if (status?.startsWith('BOOKED')) isBooked = true;
           }
-          
-          const status = cleaner.weekStarting ? cleaner[`${dayPrefix}_${hour}`] : undefined;
-          const isAvailable = status === 'AVAILABLE';
+
           return React.createElement('div', {
-            key: `${cleaner.id || cleaner.name}-${hour}`,
+            key: `${c.id || c.name}-${hour}`,
             onClick: () => openSlotDetails(selectedDay, hour),
-            className: `p-3 sm:p-4 cursor-pointer hover:opacity-80 transition-all flex items-center justify-center ${isAvailable ? 'bg-green-500' : 'bg-white'}`
+            className: `p-3 sm:p-4 cursor-pointer hover:opacity-80 transition-all flex items-center justify-center ${isAvailable ? 'bg-green-500' : isBooked ? 'bg-red-500' : 'bg-white'}`
           },
-            React.createElement('div', { className: 'text-center font-bold text-lg', style: {color: isAvailable ? 'white' : '#cbd5e1'} }, isAvailable ? '✓' : '—')
+            React.createElement('div', {
+              className: `text-center font-bold text-lg ${isAvailable || isBooked ? 'text-white' : 'text-gray-300'}`,
+            }, isAvailable ? '✓' : isBooked ? '✗' : '—')
           );
-        }).filter(Boolean)
+        })
       ])
     );
   };
-  
+
   if (loading && availabilityData.length === 0) {
     return React.createElement('div', { className: 'min-h-screen bg-gray-50 flex items-center justify-center' },
       React.createElement('div', { className: 'text-center' },
@@ -588,11 +494,8 @@ const DustBustersCalendar = () => {
     );
   }
   
-  const availableLabel =
-    view === 'daily' ? 'Available Today' :
-    view === 'monthly' ? 'Available This Month' :
-    'Available This Week';
-
+  // This is where all the UI components are created.
+  // I am using your 'last working code' structure here.
   return React.createElement('div', { className: 'min-h-screen bg-gray-50 p-2 md:p-5' },
     networkError && React.createElement('div', { className: 'max-w-7xl mx-auto mb-4' }, React.createElement('div', { className: 'p-4 bg-red-100 text-red-800 rounded-lg shadow-md' }, networkError)),
     React.createElement('div', { className: 'max-w-7xl mx-auto mb-4' },
@@ -630,7 +533,7 @@ const DustBustersCalendar = () => {
           React.createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, dynamicStats.totalCleaners)
         ),
         React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' },
-          React.createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, availableLabel),
+          React.createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Available Today'),
           React.createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, dynamicStats.cleanersAvailable)
         ),
         React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' },
@@ -726,10 +629,14 @@ const DustBustersCalendar = () => {
                 },
                   total > 0 && React.createElement('div', { className: 'absolute top-2 right-2 bg-blue-500 text-white text-xs font-semibold px-2 py-1 rounded-full' }, total),
                   React.createElement('div', { className: 'flex flex-wrap gap-1' },
-                    ...available.slice(0, 4).map((cleaner) => React.createElement('div', { key: cleaner.id, className: 'inline-block px-2 py-0.5 sm:px-2.5 sm:py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium', title: cleaner.fullName || cleaner.name }, cleaner.fullName || cleaner.name)),
-                    ...booked.slice(0, 4).map((item) => React.createElement('div', { key: item.id || item.job.jobNumber, className: 'inline-block px-2 py-0.5 sm:px-2.5 sm:py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium', title: item.hasSchedule === false ? `${item.job.cleanerName} - ${item.job.customer}` : item.fullName || item.name },
-                        item.hasSchedule === false ? item.job.customer : (item.fullName || item.name)
-                    )),
+                    ...available.slice(0, 4).map((cleaner) =>
+                        React.createElement('div', { key: cleaner.id, className: 'inline-block px-2 py-0.5 sm:px-2.5 sm:py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium', title: cleaner.fullName || cleaner.name }, cleaner.fullName || cleaner.name)
+                    ),
+                    ...booked.slice(0, 4).map((item) =>
+                        React.createElement('div', { key: item.id || item.job.jobNumber, className: 'inline-block px-2 py-0.5 sm:px-2.5 sm:py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium', title: item.hasSchedule === false ? `${item.job.cleanerName} - ${item.job.customer}` : item.fullName || item.name },
+                            item.hasSchedule === false ? item.job.customer : (item.fullName || item.name)
+                        )
+                    ),
                     total === 0 && React.createElement('div', { className: 'text-gray-400 text-xs italic' }, 'No activity')
                   )
                 );
