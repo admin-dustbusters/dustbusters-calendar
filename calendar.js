@@ -476,4 +476,164 @@ const DustBustersCalendar = () => {
       },
       React.createElement('div', { className: 'bg-gray-800 text-white p-2 sm:p-4 font-semibold text-center text-sm' }, 'Time'),
       ...allItemsForDay.map(c =>
-        React.createElement('div', { key: c.id || c.name, className: 'bg-gray-800 text-white
+        React.createElement('div', { key: c.id || c.name, className: 'bg-gray-800 text-white p-2 sm:p-4 font-semibold text-center text-xs sm:text-sm' },
+          React.createElement('div', { className: 'font-medium' }, c.fullName || c.name),
+          React.createElement('div', { className: 'text-xs font-normal opacity-80 mt-1' }, c.region)
+        )
+      ),
+      ...hourlySlots.flatMap((hour) => [
+        React.createElement('div', { key: `time-${hour}`, className: 'bg-gray-700 text-white p-3 sm:p-4 flex items-center justify-center font-medium text-sm'}, hour),
+        ...mergedData.map(({ cleaner, bookingGroups }) => {
+          const bookingGroup = bookingGroups.find(bg => bg.slots.includes(hour));
+          if (bookingGroup && bookingGroup.startHour !== hour) return null;
+
+          if (bookingGroup) {
+            const spanCount = bookingGroup.slots.length;
+            return React.createElement('div', {
+              key: `${cleaner.id || cleaner.name}-${hour}`,
+              onClick: () => openSlotDetails(selectedDay, hour),
+              className: 'bg-red-500 p-2 cursor-pointer hover:opacity-80 transition-all flex flex-col items-center justify-center text-white relative',
+              style: { gridRow: `span ${spanCount}` }
+            },
+              React.createElement('div', { className: 'font-bold text-sm' }, `Job #${bookingGroup.jobNumber}`),
+              React.createElement('div', { className: 'text-xs mt-1' }, bookingGroup.customer),
+              React.createElement('div', { className: 'text-xs opacity-90' }, bookingGroup.timeSlot)
+            );
+          }
+          
+          const status = cleaner.weekStarting ? cleaner[`${dayPrefix}_${hour}`] : undefined;
+          const isAvailable = status === 'AVAILABLE';
+          return React.createElement('div', {
+            key: `${cleaner.id || cleaner.name}-${hour}`,
+            onClick: () => openSlotDetails(selectedDay, hour),
+            className: `p-3 sm:p-4 cursor-pointer hover:opacity-80 transition-all flex items-center justify-center ${isAvailable ? 'bg-green-500' : 'bg-white'}`
+          },
+            React.createElement('div', { className: 'text-center font-bold text-lg', style: {color: isAvailable ? 'white' : '#cbd5e1'} }, isAvailable ? '✓' : '—')
+          );
+        }).filter(Boolean)
+      ])
+    );
+  };
+  
+  if (loading && availabilityData.length === 0) {
+    return React.createElement(/* ... Your Loading component ... */);
+  }
+  
+  return React.createElement('div', { className: 'min-h-screen bg-gray-50 p-2 md:p-5' },
+    // Paste Your Header, AI banner, Stats, Search, and Controls UI here
+    // ...
+    React.createElement('div', { className: 'max-w-7xl mx-auto' },
+      view === 'weekly' && React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-3 sm:p-7 overflow-x-auto' },
+          React.createElement('div', { className: 'min-w-[1200px]' },
+              React.createElement('div', { className: 'grid grid-cols-8 gap-px bg-gray-300 border border-gray-300 mb-px' },
+                  React.createElement('div', { className: 'bg-gray-800 text-white p-4 font-semibold text-center text-sm' }, 'Time Slot'),
+                  ...dayNames.map((day, idx) => {
+                      const date = weekDates[idx];
+                      const isToday = date.toDateString() === new Date().toDateString();
+                      return React.createElement('div', { key: idx, onClick: () => { setSelectedDay(date); setView('daily'); },
+                          className: `p-3 sm:p-4 font-semibold text-center text-sm cursor-pointer hover:opacity-80 transition-colors ${isToday ? 'bg-yellow-300 text-yellow-800' : 'bg-gray-800 text-white hover:bg-blue-500'}`
+                      }, day.substring(0,3), React.createElement('div', { className: 'text-xs font-normal mt-1' }, date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })));
+                  })
+              ),
+              ...timeBlocks.map((block) =>
+                  React.createElement('div', { key: block.id, className: 'grid grid-cols-8 gap-px bg-gray-300 border-l border-r border-b border-gray-300' },
+                      React.createElement('div', { className: 'bg-gray-700 text-white p-4 flex flex-col justify-center' },
+                          React.createElement('div', { className: 'font-medium text-sm' }, `${block.emoji} ${block.label}`),
+                          React.createElement('div', { className: 'text-xs opacity-80 mt-1' }, block.time)
+                      ),
+                      ...weekDates.map((date, dayIdx) => {
+                          const { available, booked } = getCleanersForSlot(date, block.id);
+                          const total = available.length + booked.length;
+                          const isToday = date.toDateString() === new Date().toDateString();
+                          return React.createElement('div', { key: dayIdx, onClick: () => openSlotDetails(date, block.id),
+                              className: `p-2 sm:p-3 min-h-[90px] sm:min-h-[100px] relative cursor-pointer hover:bg-gray-100 transition-colors ${isToday ? 'bg-yellow-50' : 'bg-white'}`
+                          },
+                              total > 0 && React.createElement('div', { className: 'absolute top-2 right-2 bg-blue-500 text-white text-xs font-semibold px-2 py-1 rounded-full' }, total),
+                              React.createElement('div', { className: 'flex flex-wrap gap-1' },
+                                ...available.slice(0, 4).map((cleaner) =>
+                                    React.createElement('div', { key: cleaner.id, className: 'inline-block px-2 py-0.5 sm:px-2.5 sm:py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium', title: cleaner.fullName || cleaner.name }, cleaner.fullName || cleaner.name)
+                                ),
+                                ...booked.slice(0, 4).map((item) =>
+                                    React.createElement('div', { key: item.id || item.job.jobNumber, className: 'inline-block px-2 py-0.5 sm:px-2.5 sm:py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium', title: item.hasSchedule === false ? `${item.job.cleanerName} - ${item.job.customer}` : item.fullName || item.name },
+                                        item.hasSchedule === false ? item.job.customer : (item.fullName || item.name)
+                                    )
+                                ),
+                                total === 0 && React.createElement('div', { className: 'text-gray-400 text-xs italic' }, 'No activity')
+                              )
+                          );
+                      })
+                  )
+              )
+          )
+      ),
+      view === 'daily' && React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-3 sm:p-7' },
+        React.createElement('div', { className: 'overflow-x-auto' },
+          React.createElement('div', { className: 'min-w-[1000px]' }, renderDailyView())
+        )
+      ),
+      view === 'monthly' && React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-3 sm:p-7' },
+        // Paste your Monthly view code here
+      ),
+      showModal && selectedSlot && React.createElement('div', { className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4', onClick: () => setShowModal(false) },
+        React.createElement('div', { className: 'bg-white rounded-xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto p-6 md:p-8', onClick: (e) => e.stopPropagation() },
+          React.createElement('div', { className: 'text-xl md:text-2xl font-bold text-gray-800 mb-2' }, `${selectedSlot.day} ${selectedSlot.block.label}`),
+          React.createElement('div', { className: 'text-sm text-gray-600 mb-6' }, `${selectedSlot.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} • ${selectedSlot.block.time}`),
+          React.createElement('div', { className: 'mb-6' },
+            React.createElement('h3', { className: 'font-semibold text-green-700 mb-3 text-lg' }, `✅ Available (${selectedSlot.available.length})`),
+            React.createElement('div', { className: 'space-y-3' },
+              selectedSlot.available.length > 0 ? selectedSlot.available.map(c =>
+                React.createElement('div', { key: c.id, className: 'bg-gray-50 rounded-lg p-4' },
+                  React.createElement('div', { className: 'flex justify-between items-start mb-2' },
+                    React.createElement('div', { className: 'font-semibold text-gray-900' }, c.fullName || c.name),
+                    React.createElement('div', { className: 'text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded' }, c.region)
+                  ),
+                  React.createElement('div', { className: 'text-sm text-gray-600 mb-1' }, c.phone || 'No phone'),
+                  React.createElement('div', { className: 'text-sm text-gray-600' }, c.rate ? (typeof c.rate === 'number' ? `$${c.rate}/hour` : c.rate) : 'Rate not set')
+                )
+              ) : React.createElement('div', {className: 'text-sm text-gray-500'}, 'No cleaners available for this slot.')
+            )
+          ),
+          selectedSlot.booked.length > 0 && React.createElement('div', { className: 'mb-6' },
+            React.createElement('h3', { className: 'font-semibold text-red-700 mb-3 text-lg' }, `🔴 Booked (${selectedSlot.booked.length})`),
+            React.createElement('div', { className: 'space-y-3' },
+              selectedSlot.booked.map(c => {
+                const isStickyNote = c.hasSchedule === false;
+                let bookingDetails;
+                if (isStickyNote) {
+                  bookingDetails = {
+                    jobNumber: c.job.jobNumber, customer: c.job.customer, region: c.region || 'Unknown', timeSlot: c.job.timeSlot, address: c.job.address
+                  };
+                } else {
+                  const dayPrefix = getDayOfWeekAbbrev(selectedSlot.date);
+                  const firstBookedHour = selectedSlot.isHourly ? selectedSlot.block.label : selectedSlot.block.hours.find(h => c[`${dayPrefix}_${h}`]?.startsWith('BOOKED'));
+                  const bookingString = c[`${dayPrefix}_${firstBookedHour}`];
+                  bookingDetails = parseBookingDetails(bookingString);
+                }
+                return React.createElement('div', { key: c.id || c.job.jobNumber, className: 'bg-red-50 rounded-lg p-4 border-2 border-red-200' },
+                  React.createElement('div', { className: 'flex justify-between items-start mb-2' },
+                    React.createElement('div', { className: 'font-semibold text-gray-900' }, c.fullName || c.name),
+                    React.createElement('div', { className: 'text-xs px-2 py-1 bg-red-200 text-red-800 rounded font-bold' }, bookingDetails ? `Job #${bookingDetails.jobNumber}` : 'Booked')
+                  ),
+                  bookingDetails && React.createElement('div', { className: 'space-y-1 mt-3 text-sm' },
+                    React.createElement('div', { className: 'text-gray-700' }, React.createElement('span', { className: 'font-semibold' }, '👤 Customer: '), bookingDetails.customer),
+                    React.createElement('div', { className: 'text-gray-700' }, React.createElement('span', { className: 'font-semibold' }, '📍 Region: '), bookingDetails.region),
+                    React.createElement('div', { className: 'text-gray-700' }, React.createElement('span', { className: 'font-semibold' }, '⏰ Time: '), bookingDetails.timeSlot),
+                    bookingDetails.address && React.createElement('div', { className: 'text-gray-700' }, React.createElement('span', { className: 'font-semibold' }, '🏠 Address: '), bookingDetails.address)
+                  )
+                );
+              })
+            )
+          ),
+          React.createElement('div', { className: 'flex flex-col sm:flex-row gap-3 mt-6' },
+            React.createElement('button', { onClick: () => alert('AI booking assistant coming soon!'), className: 'flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700' }, '🤖 Book with AI Assist'),
+            React.createElement('button', { onClick: () => setShowModal(false), className: 'px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300' }, 'Close')
+          )
+        )
+      ),
+      showCleanersModal && renderCleanersModal()
+    )
+  );
+};
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(DustBustersCalendar));
