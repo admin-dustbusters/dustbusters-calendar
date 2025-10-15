@@ -359,31 +359,59 @@ const DustBustersCalendar = () => {
     const dayPrefix = getDayOfWeekAbbrev(date);
     const weekMonday = getMonday(date);
     const weekString = weekMonday.toISOString().split('T')[0];
+    const dateString = date.toISOString().split('T')[0];
     const lowerQuery = searchQuery.toLowerCase();
 
-    let filtered = availabilityData
-      .filter(c => c.weekStarting ? c.weekStarting === weekString : true)
-      .filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
+    // This is the block or hour we are checking against (e.g., ['5pm', '6pm', '7pm'])
+    const blockHours = hourlySlots.includes(blockIdOrHour) 
+      ? [blockIdOrHour] 
+      : timeBlocks.find(b => b.id === blockIdOrHour)?.hours || [];
+
+    const availableCleaners = [];
+    const bookedCleaners = [];
+
+    // First, filter by search query and region
+    const initiallyFiltered = availabilityData
+      .filter(c => selectedRegion === 'all' || (c.regions && c.regions.some(r => r.toLowerCase() === selectedRegion)) || c.region?.toLowerCase() === selectedRegion)
       .filter(c => 
         !lowerQuery || 
         c.name?.toLowerCase().includes(lowerQuery) || 
         c.fullName?.toLowerCase().includes(lowerQuery) ||
-        c.region?.toLowerCase().includes(lowerQuery) ||
-        c.notes?.toLowerCase().includes(lowerQuery)
+        (c.job && c.job.customer?.toLowerCase().includes(lowerQuery))
       );
 
-    const isHourly = hourlySlots.includes(blockIdOrHour);
-    if (isHourly) {
-      const fieldName = `${dayPrefix}_${blockIdOrHour}`;
-      const available = filtered.filter(c => c[fieldName] === 'AVAILABLE');
-      const booked = filtered.filter(c => c[fieldName]?.startsWith('BOOKED'));
-      return { available, booked, total: available.length + booked.length };
-    } else {
-      const block = timeBlocks.find(b => b.id === blockIdOrHour);
-      const available = filtered.filter(c => block.hours.every(h => c[`${dayPrefix}_${h}`] === 'AVAILABLE'));
-      const booked = filtered.filter(c => block.hours.some(h => c[`${dayPrefix}_${h}`]?.startsWith('BOOKED')));
-      return { available, booked, total: available.length + booked.length };
-    }
+    // Now, iterate and check each item's type
+    initiallyFiltered.forEach(item => {
+      // CASE 1: This is a full schedule object
+      if (item.weekStarting && item.weekStarting === weekString) {
+        const isAvailable = blockHours.every(h => item[`${dayPrefix}_${h}`] === 'AVAILABLE');
+        const isBooked = blockHours.some(h => item[`${dayPrefix}_${h}`]?.startsWith('BOOKED'));
+
+        if (isAvailable) {
+          availableCleaners.push(item);
+        } else if (isBooked) {
+          bookedCleaners.push(item);
+        }
+      } 
+      // CASE 2: This is a "sticky note" job-only object
+      else if (item.hasSchedule === false && item.job) {
+        // Check if the job is on the correct day
+        if (item.job.date === dateString) {
+          // Check if the job's time slots overlap with the calendar block's hours
+          const jobOverlaps = blockHours.some(blockHour => item.job.slots.includes(blockHour));
+          if (jobOverlaps) {
+            // Treat this as a booked slot and add it for display
+            bookedCleaners.push(item);
+          }
+        }
+      }
+    });
+    
+    // To avoid duplicates in the UI, create a unique set of cleaners
+    const uniqueAvailable = Array.from(new Map(availableCleaners.map(c => [c.id, c])).values());
+    const uniqueBooked = Array.from(new Map(bookedCleaners.map(c => [c.id || c.job.jobNumber, c])).values());
+
+    return { available: uniqueAvailable, booked: uniqueBooked, total: uniqueAvailable.length + uniqueBooked.length };
   };
   
   const getAvailableCleanersForDay = (date) => {
