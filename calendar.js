@@ -8,2005 +8,2291 @@ const N8N_WEBHOOK_URL = 'https://dustbusters-n8n.duckdns.org/webhook/calendar-da
 
 const DustBustersCalendar = () => {
 
-const [currentWeek, setCurrentWeek] = useState(getMonday(new Date()));
+  const [currentWeek, setCurrentWeek] = useState(getMonday(new Date()));
 
-const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
-const [selectedDay, setSelectedDay] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState(new Date());
 
-const [view, setView] = useState('weekly');
+  const [view, setView] = useState('weekly');
 
-const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-const [availabilityData, setAvailabilityData] = useState([]);
+  const [availabilityData, setAvailabilityData] = useState([]);
 
-const [selectedRegion, setSelectedRegion] = useState('all');
+  const [selectedRegion, setSelectedRegion] = useState('all');
 
-const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
-const [lastSync, setLastSync] = useState(null);
+  const [lastSync, setLastSync] = useState(null);
 
-const [selectedSlot, setSelectedSlot] = useState(null);
+  const [selectedSlot, setSelectedSlot] = useState(null);
 
-const [showModal, setShowModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
-const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
-const [datePickerMonth, setDatePickerMonth] = useState(new Date());
+  const [datePickerMonth, setDatePickerMonth] = useState(new Date());
 
 
 
-const [showCleanersModal, setShowCleanersModal] = useState(false);
+  const [showCleanersModal, setShowCleanersModal] = useState(false);
 
-const [cleanerModalRegionFilter, setCleanerModalRegionFilter] = useState('all');
+  const [cleanerModalRegionFilter, setCleanerModalRegionFilter] = useState('all');
 
 
 
-const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
 
-const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
+  
 
-const [networkError, setNetworkError] = useState(null);
+  const [networkError, setNetworkError] = useState(null);
 
 
 
-const [dynamicStats, setDynamicStats] = useState({
+  const [dynamicStats, setDynamicStats] = useState({
 
-totalCleaners: 0,
+    totalCleaners: 0,
 
-cleanersAvailable: 0,
+    cleanersAvailable: 0,
 
-bookedSlots: 0,
+    bookedSlots: 0,
 
-openSlots: 0,
+    openSlots: 0,
 
-});
+  });
 
 
 
-function getMonday(date) {
+  function getMonday(date) {
 
-const d = new Date(date);
+    const d = new Date(date);
 
-const day = d.getDay();
+    const day = d.getDay();
 
-const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
 
-d.setHours(0, 0, 0, 0);
+    d.setHours(0, 0, 0, 0);
 
-return new Date(d.setDate(diff));
+    return new Date(d.setDate(diff));
 
-}
+  }
 
 
 
-const getInitials = (name) => {
+  const getInitials = (name) => {
 
-if (!name || typeof name !== 'string') return '';
+    if (!name || typeof name !== 'string') return '';
 
-const parts = name.trim().split(' ');
+    const parts = name.trim().split(' ');
 
-if (parts.length > 1 && parts[parts.length - 1]) {
+    if (parts.length > 1 && parts[parts.length - 1]) {
 
-return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 
-}
+    }
 
-return name.substring(0, 2).toUpperCase();
+    return name.substring(0, 2).toUpperCase();
 
-};
+  };
 
 
 
-const parseDateFromString = (str) => {
+  const parseBookingDetails = (bookingString) => {
 
-const today = new Date();
+    if (!bookingString || !bookingString.startsWith('BOOKED')) {
 
-today.setHours(0, 0, 0, 0);
+      return null;
 
-const lowerStr = str.toLowerCase().trim();
+    }
 
+    
 
+    const parts = bookingString.split('|').map(p => p.trim());
 
-if (lowerStr === 'today') return today;
+    if (parts.length < 5) return null;
 
-if (lowerStr === 'tomorrow') {
+    
 
-const d = new Date(today);
+    const jobNumberMatch = parts[0].match(/#(\d+)/);
 
-d.setDate(d.getDate() + 1);
+    return {
 
-return d;
+      jobNumber: jobNumberMatch ? jobNumberMatch[1] : 'Unknown',
 
-}
+      customer: parts[1] || 'Unknown Customer',
 
-if (lowerStr === 'yesterday') {
+      region: parts[2] || 'Unknown Region',
 
-const d = new Date(today);
+      timeSlot: parts[3] || 'Unknown Time',
 
-d.setDate(d.getDate() - 1);
+      cleaners: parts[4] || 'Unknown Cleaners'
 
-return d;
+    };
 
-}
+  };
 
 
 
-const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const parseDateFromString = (str) => {
 
-const dayIndex = daysOfWeek.findIndex(day => lowerStr.includes(day));
+    const today = new Date();
 
-if (dayIndex !== -1) {
+    today.setHours(0, 0, 0, 0);
 
-let date = new Date(today);
+    const lowerStr = str.toLowerCase().trim();
 
-const currentDay = date.getDay();
 
-let diff = dayIndex - currentDay;
 
-if (diff <= 0 && !lowerStr.includes('last')) diff += 7;
+    if (lowerStr === 'today') return today;
 
-if (diff > 0 && lowerStr.includes('last')) diff -= 7;
+    if (lowerStr === 'tomorrow') {
 
-date.setDate(date.getDate() + diff);
+        const d = new Date(today);
 
-return date;
+        d.setDate(d.getDate() + 1);
 
-}
+        return d;
 
+    }
 
-try {
+    if (lowerStr === 'yesterday') {
 
-const parsed = new Date(lowerStr);
+        const d = new Date(today);
 
-if (!isNaN(parsed.getTime()) && (/\d/.test(lowerStr) || lowerStr.match(/[a-z]{3,}/))) {
+        d.setDate(d.getDate() - 1);
 
-if (parsed.getFullYear() > 1980) {
+        return d;
 
-parsed.setHours(0,0,0,0);
+    }
 
-return parsed;
 
-}
 
-}
+    const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
-} catch(e) { /* ignore parse errors */ }
+    const dayIndex = daysOfWeek.findIndex(day => lowerStr.includes(day));
 
+    if (dayIndex !== -1) {
 
-const match = lowerStr.match(/^(\d{1,2})\/(\d{1,2})$/);
+        let date = new Date(today);
 
-if (match) {
+        const currentDay = date.getDay();
 
-const month = parseInt(match[1], 10) - 1;
+        let diff = dayIndex - currentDay;
 
-const day = parseInt(match[2], 10);
+        if (diff <= 0 && !lowerStr.includes('last')) diff += 7;
 
-const year = today.getFullYear();
+        if (diff > 0 && lowerStr.includes('last')) diff -= 7;
 
-let date = new Date(year, month, day);
+        date.setDate(date.getDate() + diff);
 
-date.setHours(0,0,0,0);
+        return date;
 
-if (date < today) date.setFullYear(year + 1);
+    }
 
-return date;
+    
 
-}
+    try {
 
+        const parsed = new Date(lowerStr);
 
+        if (!isNaN(parsed.getTime()) && (/\d/.test(lowerStr) || lowerStr.match(/[a-z]{3,}/))) {
 
-return null;
+             if (parsed.getFullYear() > 1980) {
 
-};
+                parsed.setHours(0,0,0,0);
 
+                return parsed;
 
+             }
 
-const handleSuggestionClick = (suggestion) => {
+        }
 
-switch (suggestion.type) {
+    } catch(e) { }
 
-case 'date':
+    
 
-const date = suggestion.value;
+    const match = lowerStr.match(/^(\d{1,2})\/(\d{1,2})$/);
 
-setSelectedDay(date);
+    if (match) {
 
-setCurrentWeek(getMonday(date));
+        const month = parseInt(match[1], 10) - 1;
 
-setCurrentMonth(date);
+        const day = parseInt(match[2], 10);
 
-setView('daily');
+        const year = today.getFullYear();
 
-setSearchQuery('');
+        let date = new Date(year, month, day);
 
-break;
+        date.setHours(0,0,0,0);
 
-case 'cleaner':
+        if (date < today) date.setFullYear(year + 1);
 
-case 'notes':
+        return date;
 
-setSearchQuery(suggestion.value);
+    }
 
-break;
 
-case 'region':
 
-setSelectedRegion(suggestion.value.toLowerCase());
+    return null;
 
-setSearchQuery('');
+  };
 
-break;
 
-}
 
-setShowSuggestions(false);
+  const handleSuggestionClick = (suggestion) => {
 
-};
+    switch (suggestion.type) {
 
+        case 'date':
 
+            const date = suggestion.value;
 
-const hourlySlots = ['8am', '9am', '10am', '11am', '12pm', '1pm', '2pm', '3pm', '4pm', '5pm', '6pm', '7pm', '8pm'];
+            setSelectedDay(date);
 
+            setCurrentWeek(getMonday(date));
 
+            setCurrentMonth(date);
 
-const loadAvailabilityData = async () => {
+            setView('daily');
 
-setLoading(true);
+            setSearchQuery('');
 
-setNetworkError(null);
+            break;
 
-try {
+        case 'cleaner':
 
-const response = await fetch(N8N_WEBHOOK_URL);
+        case 'notes':
 
-if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            setSearchQuery(suggestion.value);
 
-const data = await response.json();
+            break;
 
-let cleaners = [];
+        case 'region':
 
-if (Array.isArray(data)) {
+            setSelectedRegion(suggestion.value.toLowerCase());
 
-cleaners = data[0]?.cleaners || [];
+            setSearchQuery('');
 
-} else if (data.cleaners) {
+            break;
 
-cleaners = data.cleaners;
+    }
 
-}
+    setShowSuggestions(false);
 
-setAvailabilityData(cleaners);
+  };
 
-setLastSync(new Date());
 
-} catch (error) {
 
-console.error('Error loading data:', error);
+  const hourlySlots = ['8am', '9am', '10am', '11am', '12pm', '1pm', '2pm', '3pm', '4pm', '5pm', '6pm', '7pm', '8pm', '9pm', '10pm', '11pm'];
 
-setAvailabilityData([]);
 
-setNetworkError(`Failed to load data. Please check the connection and webhook URL. Error: ${error.message}`);
 
-}
+  const loadAvailabilityData = async () => {
 
-setLoading(false);
+    setLoading(true);
 
-};
+    setNetworkError(null);
 
+    try {
 
+      const response = await fetch(N8N_WEBHOOK_URL);
 
-useEffect(() => {
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-loadAvailabilityData();
+      const data = await response.json();
 
-const interval = setInterval(loadAvailabilityData, 60000);
+      let cleaners = [];
 
-return () => clearInterval(interval);
+      if (Array.isArray(data)) {
 
-}, []);
+        cleaners = data[0]?.cleaners || [];
 
+      } else if (data.cleaners) {
 
+        cleaners = data.cleaners;
 
-const availableRegions = useMemo(() => {
+      }
 
-const regions = new Set();
+      setAvailabilityData(cleaners);
 
-availabilityData.forEach(cleaner => {
+      setLastSync(new Date());
 
-if (cleaner.region && typeof cleaner.region === 'string' && cleaner.region.trim() !== '') {
+    } catch (error) {
 
-regions.add(cleaner.region);
+      console.error('Error loading data:', error);
 
-}
+      setAvailabilityData([]);
 
-if (cleaner.regions && Array.isArray(cleaner.regions)) {
+      setNetworkError(`Failed to load data. Please check the connection and webhook URL. Error: ${error.message}`);
 
-cleaner.regions.forEach(r => {
+    }
 
-if (r && typeof r === 'string' && r.trim() !== '') {
+    setLoading(false);
 
-regions.add(r);
+  };
 
-}
 
-});
 
-}
+  useEffect(() => {
 
-});
+    loadAvailabilityData();
 
-return ['all', ...Array.from(regions).sort()];
+    const interval = setInterval(loadAvailabilityData, 60000);
 
-}, [availabilityData]);
+    return () => clearInterval(interval);
 
+  }, []);
 
-useEffect(() => {
 
-if (searchQuery.length < 2) {
 
-setSearchSuggestions([]);
+  const availableRegions = useMemo(() => {
 
-return;
+    const regions = new Set();
 
-}
+    availabilityData.forEach(cleaner => {
 
+      if (cleaner.region && typeof cleaner.region === 'string' && cleaner.region.trim() !== '') {
 
+        regions.add(cleaner.region);
 
-const suggestions = [];
+      }
 
-const lowerQuery = searchQuery.toLowerCase();
+      if (cleaner.regions && Array.isArray(cleaner.regions)) {
 
+        cleaner.regions.forEach(r => {
 
+          if (r && typeof r === 'string' && r.trim() !== '') {
 
-const parsedDate = parseDateFromString(lowerQuery);
+            regions.add(r);
 
-if (parsedDate) {
+          }
 
-suggestions.push({
+        });
 
-type: 'date',
+      }
 
-value: parsedDate,
+    });
 
-label: `📅 Go to date: ${parsedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
+    return ['all', ...Array.from(regions).sort()];
 
-});
+  }, [availabilityData]);
 
-}
+  
 
+  useEffect(() => {
 
+    if (searchQuery.length < 2) {
 
-const uniqueCleaners = Array.from(new Map(availabilityData.map(c => [c.id || c.name, c])).values());
+        setSearchSuggestions([]);
 
-uniqueCleaners
+        return;
 
-.filter(c => (c.fullName || c.name)?.toLowerCase().includes(lowerQuery))
+    }
 
-.slice(0, 3)
 
-.forEach(c => {
 
-suggestions.push({
+    const suggestions = [];
 
-type: 'cleaner',
+    const lowerQuery = searchQuery.toLowerCase();
 
-value: c.fullName || c.name,
 
-label: `👤 Cleaner: ${c.fullName || c.name}`
 
-});
+    const parsedDate = parseDateFromString(lowerQuery);
 
-});
+    if (parsedDate) {
 
+        suggestions.push({
 
-availableRegions
+            type: 'date',
 
-.filter(r => r !== 'all' && r.toLowerCase().includes(lowerQuery))
+            value: parsedDate,
 
-.slice(0, 2)
+            label: `📅 Go to date: ${parsedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`
 
-.forEach(r => {
+        });
 
-suggestions.push({
+    }
 
-type: 'region',
 
-value: r,
 
-label: `📍 Filter by region: ${r.charAt(0).toUpperCase() + r.slice(1)}`
+    const uniqueCleaners = Array.from(new Map(availabilityData.map(c => [c.id || c.name, c])).values());
 
-});
+    uniqueCleaners
 
-});
+        .filter(c => (c.fullName || c.name)?.toLowerCase().includes(lowerQuery))
 
+        .slice(0, 3)
 
+        .forEach(c => {
 
-suggestions.push({
+            suggestions.push({
 
-type: 'notes',
+                type: 'cleaner',
 
-value: searchQuery,
+                value: c.fullName || c.name,
 
-label: `📝 Search notes for: "${searchQuery}"`
+                label: `👤 Cleaner: ${c.fullName || c.name}`
 
-});
+            });
 
+        });
 
+    
 
-setSearchSuggestions(suggestions);
+    availableRegions
 
-}, [searchQuery, availabilityData, availableRegions]);
+        .filter(r => r !== 'all' && r.toLowerCase().includes(lowerQuery))
 
+        .slice(0, 2)
 
-useEffect(() => {
+        .forEach(r => {
 
-const lowerQuery = searchQuery.toLowerCase();
+            suggestions.push({
 
-const filteredCleaners = availabilityData
+                type: 'region',
 
-.filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
+                value: r,
 
-.filter(c =>
+                label: `📍 Filter by region: ${r.charAt(0).toUpperCase() + r.slice(1)}`
 
-!lowerQuery ||
+            });
 
-c.name?.toLowerCase().includes(lowerQuery) ||
+        });
 
-c.fullName?.toLowerCase().includes(lowerQuery) ||
 
-c.region?.toLowerCase().includes(lowerQuery) ||
 
-c.notes?.toLowerCase().includes(lowerQuery)
+    suggestions.push({
 
-);
+        type: 'notes',
 
+        value: searchQuery,
 
+        label: `📝 Search notes for: "${searchQuery}"`
 
-let datesToScan = [];
+    });
 
-if (view === 'daily') {
 
-datesToScan = [selectedDay];
 
-} else if (view === 'weekly') {
+    setSearchSuggestions(suggestions);
 
-const weekDates = [];
+  }, [searchQuery, availabilityData, availableRegions]);
 
-for (let i = 0; i < 7; i++) {
+  
 
-const date = new Date(currentWeek);
+  useEffect(() => {
 
-date.setDate(date.getDate() + i);
+    const lowerQuery = searchQuery.toLowerCase();
 
-weekDates.push(date);
+    const filteredCleaners = availabilityData
 
-}
+      .filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
 
-datesToScan = weekDates;
+      .filter(c => 
 
-} else if (view === 'monthly') {
+        !lowerQuery || 
 
-const monthDays = [];
+        c.name?.toLowerCase().includes(lowerQuery) || 
 
-const year = currentMonth.getFullYear();
+        c.fullName?.toLowerCase().includes(lowerQuery) ||
 
-const month = currentMonth.getMonth();
+        c.region?.toLowerCase().includes(lowerQuery) ||
 
-const daysInMonth = new Date(year, month + 1, 0).getDate();
+        c.notes?.toLowerCase().includes(lowerQuery)
 
-for (let i = 1; i <= daysInMonth; i++) {
+      );
 
-monthDays.push(new Date(year, month, i));
 
-}
 
-datesToScan = monthDays;
+    let datesToScan = [];
 
-}
+    if (view === 'daily') {
 
+      datesToScan = [selectedDay];
 
+    } else if (view === 'weekly') {
 
-let openSlots = 0;
+      const weekDates = [];
 
-let bookedSlots = 0;
+      for (let i = 0; i < 7; i++) {
 
-const availableCleanerIds = new Set();
+        const date = new Date(currentWeek);
 
+        date.setDate(date.getDate() + i);
 
-const weekCleanerMap = new Map();
+        weekDates.push(date);
 
-filteredCleaners.forEach(cleaner => {
+      }
 
-const weekKey = cleaner.weekStarting || 'no_week';
+      datesToScan = weekDates;
 
-if (!weekCleanerMap.has(weekKey)) {
+    } else if (view === 'monthly') {
 
-weekCleanerMap.set(weekKey, []);
+      const monthDays = [];
 
-}
+      const year = currentMonth.getFullYear();
 
-weekCleanerMap.get(weekKey).push(cleaner);
+      const month = currentMonth.getMonth();
 
-});
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
 
+      for (let i = 1; i <= daysInMonth; i++) {
 
+        monthDays.push(new Date(year, month, i));
 
-datesToScan.forEach(date => {
+      }
 
-const dayPrefix = getDayOfWeekAbbrev(date);
+      datesToScan = monthDays;
 
-const weekString = getMonday(date).toISOString().split('T')[0];
+    }
 
-const cleanersForThisWeek = weekCleanerMap.get(weekString) || [];
 
 
+    let openSlots = 0;
 
-cleanersForThisWeek.forEach(cleaner => {
+    let bookedSlots = 0;
 
-hourlySlots.forEach(hour => {
+    const availableCleanerIds = new Set();
 
-const status = cleaner[`${dayPrefix}_${hour}`];
+    
 
-if (status === 'AVAILABLE') {
+    const weekCleanerMap = new Map();
 
-openSlots++;
+    filteredCleaners.forEach(cleaner => {
 
-availableCleanerIds.add(cleaner.id);
+        const weekKey = cleaner.weekStarting || 'no_week';
 
-} else if (status?.startsWith('BOOKED')) {
+        if (!weekCleanerMap.has(weekKey)) {
 
-bookedSlots++;
+            weekCleanerMap.set(weekKey, []);
 
-}
+        }
 
-});
+        weekCleanerMap.get(weekKey).push(cleaner);
 
-});
+    });
 
-});
 
 
-setDynamicStats({
+    datesToScan.forEach(date => {
 
-totalCleaners: new Set(filteredCleaners.map(c => c.id)).size,
+      const dayPrefix = getDayOfWeekAbbrev(date);
 
-cleanersAvailable: availableCleanerIds.size,
+      const weekString = getMonday(date).toISOString().split('T')[0];
 
-bookedSlots: bookedSlots,
+      const cleanersForThisWeek = weekCleanerMap.get(weekString) || [];
 
-openSlots: openSlots,
 
-});
 
+      cleanersForThisWeek.forEach(cleaner => {
 
+        hourlySlots.forEach(hour => {
 
-}, [view, selectedDay, currentWeek, currentMonth, availabilityData, selectedRegion, searchQuery]);
+          const status = cleaner[`${dayPrefix}_${hour}`];
 
+          if (status === 'AVAILABLE') {
 
+            openSlots++;
 
+            availableCleanerIds.add(cleaner.id);
 
+          } else if (status?.startsWith('BOOKED')) {
 
-const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            bookedSlots++;
 
-const dayAbbrev = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+          }
 
+        });
 
-const timeBlocks = [
+      });
 
-{ id: 'morning', label: 'Morning', emoji: '🌅', time: '8am-12pm', hours: ['8am', '9am', '10am', '11am'] },
+    });
 
-{ id: 'afternoon', label: 'Afternoon', emoji: '☀️', time: '12pm-5pm', hours: ['12pm', '1pm', '2pm', '3pm', '4pm'] },
+    
 
-{ id: 'evening', label: 'Evening', emoji: '🌙', time: '5pm-8pm', hours: ['5pm', '6pm', '7pm', '8pm'] },
+    setDynamicStats({
 
-];
+      totalCleaners: new Set(filteredCleaners.map(c => c.id)).size,
 
+      cleanersAvailable: availableCleanerIds.size,
 
+      bookedSlots: bookedSlots,
 
-const getDayOfWeekAbbrev = (date) => {
+      openSlots: openSlots,
 
-const dayIndex = date.getDay();
+    });
 
-return dayIndex === 0 ? 'Sun' : dayAbbrev[dayIndex - 1];
 
-};
 
+  }, [view, selectedDay, currentWeek, currentMonth, availabilityData, selectedRegion, searchQuery]);
 
 
-const getWeekDates = () => {
 
-const dates = [];
 
-for (let i = 0; i < 7; i++) {
 
-const date = new Date(currentWeek);
+  const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-date.setDate(date.getDate() + i);
+  const dayAbbrev = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-dates.push(date);
+  
 
-}
+  const timeBlocks = [
 
-return dates;
+    { id: 'morning', label: 'Morning', emoji: '🌅', time: '8am-12pm', hours: ['8am', '9am', '10am', '11am'] },
 
-};
+    { id: 'afternoon', label: 'Afternoon', emoji: '☀️', time: '12pm-5pm', hours: ['12pm', '1pm', '2pm', '3pm', '4pm'] },
 
+    { id: 'evening', label: 'Evening', emoji: '🌙', time: '5pm-11pm', hours: ['5pm', '6pm', '7pm', '8pm', '9pm', '10pm', '11pm'] },
 
-const getCalendarDays = (date) => {
+  ];
 
-const year = date.getFullYear();
 
-const month = date.getMonth();
 
-const firstDay = new Date(year, month, 1);
+  const getDayOfWeekAbbrev = (date) => {
 
-const lastDay = new Date(year, month + 1, 0);
+    const dayIndex = date.getDay();
 
-const startDay = firstDay.getDay();
+    return dayIndex === 0 ? 'Sun' : dayAbbrev[dayIndex - 1];
 
-const daysInMonth = lastDay.getDate();
+  };
 
-const days = [];
 
-for (let i = 0; i < startDay; i++) days.push(null);
 
-for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
+  const getWeekDates = () => {
 
-return days;
+    const dates = [];
 
-};
+    for (let i = 0; i < 7; i++) {
 
+      const date = new Date(currentWeek);
 
+      date.setDate(date.getDate() + i);
 
-const weekDates = getWeekDates();
+      dates.push(date);
 
-const monthDays = getCalendarDays(currentMonth);
+    }
 
+    return dates;
 
+  };
 
-const getCleanersForSlot = (date, blockIdOrHour) => {
+  
 
-const dayPrefix = getDayOfWeekAbbrev(date);
+  const getCalendarDays = (date) => {
 
-const weekMonday = getMonday(date);
+    const year = date.getFullYear();
 
-const weekString = weekMonday.toISOString().split('T')[0];
+    const month = date.getMonth();
 
-const lowerQuery = searchQuery.toLowerCase();
+    const firstDay = new Date(year, month, 1);
 
+    const lastDay = new Date(year, month + 1, 0);
 
+    const startDay = firstDay.getDay(); 
 
-let filtered = availabilityData
+    const daysInMonth = lastDay.getDate();
 
-.filter(c => c.weekStarting ? c.weekStarting === weekString : true)
+    const days = [];
 
-.filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
+    for (let i = 0; i < startDay; i++) days.push(null);
 
-.filter(c =>
+    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
 
-!lowerQuery ||
+    return days;
 
-c.name?.toLowerCase().includes(lowerQuery) ||
+  };
 
-c.fullName?.toLowerCase().includes(lowerQuery) ||
 
-c.region?.toLowerCase().includes(lowerQuery) ||
 
-c.notes?.toLowerCase().includes(lowerQuery)
+  const weekDates = getWeekDates();
 
-);
+  const monthDays = getCalendarDays(currentMonth);
 
 
 
-const isHourly = hourlySlots.includes(blockIdOrHour);
+  const getCleanersForSlot = (date, blockIdOrHour) => {
 
-if (isHourly) {
+    const dayPrefix = getDayOfWeekAbbrev(date);
 
-const fieldName = `${dayPrefix}_${blockIdOrHour}`;
+    const weekMonday = getMonday(date);
 
-const available = filtered.filter(c => c[fieldName] === 'AVAILABLE');
+    const weekString = weekMonday.toISOString().split('T')[0];
 
-const booked = filtered.filter(c => c[fieldName]?.startsWith('BOOKED'));
+    const dateString = date.toISOString().split('T')[0];
 
-return { available, booked, total: available.length + booked.length };
+    const lowerQuery = searchQuery.toLowerCase();
 
-} else {
 
-const block = timeBlocks.find(b => b.id === blockIdOrHour);
 
-const available = filtered.filter(c => block.hours.every(h => c[`${dayPrefix}_${h}`] === 'AVAILABLE'));
+    // This is the block or hour we are checking against (e.g., ['5pm', '6pm', '7pm'])
 
-const booked = filtered.filter(c => block.hours.some(h => c[`${dayPrefix}_${h}`]?.startsWith('BOOKED')));
+    const blockHours = hourlySlots.includes(blockIdOrHour) 
 
-return { available, booked, total: available.length + booked.length };
+      ? [blockIdOrHour] 
 
-}
+      : timeBlocks.find(b => b.id === blockIdOrHour)?.hours || [];
 
-};
 
 
-const getAvailableCleanersForDay = (date) => {
+    const availableCleaners = [];
 
-const lowerQuery = searchQuery.toLowerCase();
+    const bookedCleaners = [];
 
-const filteredCleaners = availabilityData
 
-.filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
 
-.filter(c =>
+    // First, filter by search query and region
 
-!lowerQuery ||
+    const initiallyFiltered = availabilityData
 
-c.name?.toLowerCase().includes(lowerQuery) ||
+      .filter(c => selectedRegion === 'all' || (c.regions && c.regions.some(r => r.toLowerCase() === selectedRegion)) || c.region?.toLowerCase() === selectedRegion)
 
-c.fullName?.toLowerCase().includes(lowerQuery) ||
+      .filter(c => 
 
-c.region?.toLowerCase().includes(lowerQuery) ||
+        !lowerQuery || 
 
-c.notes?.toLowerCase().includes(lowerQuery)
+        c.name?.toLowerCase().includes(lowerQuery) || 
 
-);
+        c.fullName?.toLowerCase().includes(lowerQuery) ||
 
+        (c.job && c.job.customer?.toLowerCase().includes(lowerQuery))
 
+      );
 
-const dayPrefix = getDayOfWeekAbbrev(date);
 
-const weekString = getMonday(date).toISOString().split('T')[0];
 
+    // Now, iterate and check each item's type
 
-const availableCleaners = new Map();
+    initiallyFiltered.forEach(item => {
 
-const cleanersForThisWeek = filteredCleaners.filter(c => c.weekStarting ? c.weekStarting === weekString : true);
+      // CASE 1: This is a full schedule object
 
+      if (item.weekStarting && item.weekStarting === weekString) {
 
+        const isAvailable = blockHours.every(h => item[`${dayPrefix}_${h}`] === 'AVAILABLE');
 
-cleanersForThisWeek.forEach(cleaner => {
+        const isBooked = blockHours.some(h => item[`${dayPrefix}_${h}`]?.startsWith('BOOKED'));
 
-for (const hour of hourlySlots) {
 
-if (cleaner[`${dayPrefix}_${hour}`] === 'AVAILABLE') {
 
-if (!availableCleaners.has(cleaner.id)) {
+        if (isAvailable) {
 
-availableCleaners.set(cleaner.id, cleaner);
+          availableCleaners.push(item);
 
-}
+        } else if (isBooked) {
 
-break;
+          bookedCleaners.push(item);
 
-}
+        }
 
-}
+      } 
 
-});
+      // CASE 2: This is a "sticky note" job-only object
 
+      else if (item.hasSchedule === false && item.job) {
 
+        // Check if the job is on the correct day
 
-return Array.from(availableCleaners.values());
+        if (item.job.date === dateString) {
 
-};
+          // Check if the job's time slots overlap with the calendar block's hours
 
+          const jobOverlaps = blockHours.some(blockHour => item.job.slots.includes(blockHour));
 
+          if (jobOverlaps) {
 
-const openSlotDetails = (date, blockIdOrHour) => {
+            // Treat this as a booked slot and add it for display
 
-const { available, booked } = getCleanersForSlot(date, blockIdOrHour);
+            bookedCleaners.push(item);
 
-const isHourly = hourlySlots.includes(blockIdOrHour);
+          }
 
-setSelectedSlot({
+        }
 
-day: date.toLocaleDateString('en-US', { weekday: 'long' }),
+      }
 
-date: date,
+    });
 
-block: isHourly ? { label: blockIdOrHour, time: blockIdOrHour } : timeBlocks.find(b => b.id === blockIdOrHour),
+    
 
-available, booked, isHourly
+    // To avoid duplicates in the UI, create a unique set of cleaners
 
-});
+    const uniqueAvailable = Array.from(new Map(availableCleaners.map(c => [c.id, c])).values());
 
-setShowModal(true);
+    const uniqueBooked = Array.from(new Map(bookedCleaners.map(c => [c.id || c.job.jobNumber, c])).values());
 
-};
 
 
-const handleViewChange = (newView) => {
+    return { available: uniqueAvailable, booked: uniqueBooked, total: uniqueAvailable.length + uniqueBooked.length };
 
-if (view === 'daily') {
+  };
 
-setCurrentWeek(getMonday(selectedDay));
+  
 
-setCurrentMonth(new Date(selectedDay.getFullYear(), selectedDay.getMonth(), 1));
+  const getAvailableCleanersForDay = (date) => {
 
-} else if (view === 'weekly') {
+    const lowerQuery = searchQuery.toLowerCase();
 
-setSelectedDay(currentWeek);
+    const filteredCleaners = availabilityData
 
-setCurrentMonth(new Date(currentWeek.getFullYear(), currentWeek.getMonth(), 1));
+      .filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
 
-} else if (view === 'monthly') {
+      .filter(c => 
 
-const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+        !lowerQuery || 
 
-setSelectedDay(firstDayOfMonth);
+        c.name?.toLowerCase().includes(lowerQuery) || 
 
-setCurrentWeek(getMonday(firstDayOfMonth));
+        c.fullName?.toLowerCase().includes(lowerQuery) ||
 
-}
+        c.region?.toLowerCase().includes(lowerQuery) ||
 
-setView(newView);
+        c.notes?.toLowerCase().includes(lowerQuery)
 
-};
+      );
 
 
 
-const getRegionColor = (region) => {
+    const dayPrefix = getDayOfWeekAbbrev(date);
 
-const lowerRegion = region?.toLowerCase();
+    const weekString = getMonday(date).toISOString().split('T')[0];
 
-const specificColors = {
+    
 
-'all': 'teal', 'charlotte': 'yellow', 'raleigh': 'stone', 'triad': 'purple',
+    const availableCleaners = new Map();
 
-};
+    const cleanersForThisWeek = filteredCleaners.filter(c => c.weekStarting ? c.weekStarting === weekString : true);
 
-if (specificColors[lowerRegion]) return specificColors[lowerRegion];
 
-const fallbackColors = ['pink', 'indigo', 'cyan', 'lime', 'orange'];
 
-let hash = 0;
+    cleanersForThisWeek.forEach(cleaner => {
 
-if (lowerRegion) {
+        for (const hour of hourlySlots) {
 
-for (let i = 0; i < lowerRegion.length; i++) {
+            if (cleaner[`${dayPrefix}_${hour}`] === 'AVAILABLE') {
 
-hash = lowerRegion.charCodeAt(i) + ((hash << 5) - hash);
+                if (!availableCleaners.has(cleaner.id)) {
 
-}
+                    availableCleaners.set(cleaner.id, cleaner);
 
-}
+                }
 
-const index = Math.abs(hash % fallbackColors.length);
+                break; 
 
-return fallbackColors[index];
+            }
 
-};
+        }
 
+    });
 
 
-const getRegionEmoji = (region) => {
 
-const emojis = {
+    return Array.from(availableCleaners.values());
 
-'Charlotte': '🟡', 'Triad': '🟣', 'Raleigh': '🟤', 'Asheville': '⛰️', 'Wilmington': '🌊', 'Durham': '🐂'
+  };
 
-};
 
-return emojis[region] || '📍';
 
-};
+  const openSlotDetails = (date, blockIdOrHour) => {
 
+    const { available, booked } = getCleanersForSlot(date, blockIdOrHour);
 
+    const isHourly = hourlySlots.includes(blockIdOrHour);
 
-const renderSearchSuggestions = () => {
+    setSelectedSlot({
 
-if (!showSuggestions || searchSuggestions.length === 0) {
+      day: date.toLocaleDateString('en-US', { weekday: 'long' }),
 
-return null;
+      date: date,
 
-}
+      block: isHourly ? { label: blockIdOrHour, time: blockIdOrHour } : timeBlocks.find(b => b.id === blockIdOrHour),
 
-return React.createElement('div', { className: 'absolute top-full w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-30 overflow-hidden' },
+      available, booked, isHourly
 
-React.createElement('ul', { className: 'divide-y divide-gray-100' },
+    });
 
-...searchSuggestions.map((suggestion, index) =>
+    setShowModal(true);
 
-React.createElement('li', { key: index },
+  };
 
-React.createElement('button', {
+  
 
-className: 'w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700',
+  const handleViewChange = (newView) => {
 
-onClick: () => handleSuggestionClick(suggestion)
+    if (view === 'daily') {
 
-}, suggestion.label)
+      setCurrentWeek(getMonday(selectedDay));
 
-)
+      setCurrentMonth(new Date(selectedDay.getFullYear(), selectedDay.getMonth(), 1));
 
-)
+    } else if (view === 'weekly') {
 
-)
+      setSelectedDay(currentWeek);
 
-);
+      setCurrentMonth(new Date(currentWeek.getFullYear(), currentWeek.getMonth(), 1));
 
-};
+    } else if (view === 'monthly') {
 
+      const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
 
+      setSelectedDay(firstDayOfMonth);
 
-const renderDatePicker = () => {
+      setCurrentWeek(getMonday(firstDayOfMonth));
 
-const days = getCalendarDays(datePickerMonth);
+    }
 
-return React.createElement('div', { className: 'absolute top-full mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-20 p-4' },
+    setView(newView);
 
-React.createElement('div', { className: 'flex items-center justify-between mb-3' },
+  };
 
-React.createElement('button', {
 
-onClick: () => setDatePickerMonth(new Date(datePickerMonth.getFullYear(), datePickerMonth.getMonth() - 1)),
 
-className: 'px-2 py-1 hover:bg-gray-100 rounded-full'
+  const getRegionColor = (region) => {
 
-}, '‹'),
+    const lowerRegion = region?.toLowerCase();
 
-React.createElement('div', { className: 'font-semibold text-sm' }, datePickerMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })),
+    const specificColors = {
 
-React.createElement('button', {
+      'all': 'teal', 'charlotte': 'yellow', 'raleigh': 'stone', 'triad': 'purple',
 
-onClick: () => setDatePickerMonth(new Date(datePickerMonth.getFullYear(), datePickerMonth.getMonth() + 1)),
+    };
 
-className: 'px-2 py-1 hover:bg-gray-100 rounded-full'
+    if (specificColors[lowerRegion]) return specificColors[lowerRegion];
 
-}, '›')
+    const fallbackColors = ['pink', 'indigo', 'cyan', 'lime', 'orange'];
 
-),
+    let hash = 0;
 
-React.createElement('div', { className: 'grid grid-cols-7 gap-1 text-center text-xs text-gray-500' },
+    if (lowerRegion) {
 
-...['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => React.createElement('div', { key: i, className: 'p-1' }, d))
+      for (let i = 0; i < lowerRegion.length; i++) {
 
-),
+        hash = lowerRegion.charCodeAt(i) + ((hash << 5) - hash);
 
-React.createElement('div', { className: 'grid grid-cols-7 gap-1' },
+      }
 
-...days.map((date, idx) => {
+    }
 
-if (!date) return React.createElement('div', { key: `empty-${idx}` });
+    const index = Math.abs(hash % fallbackColors.length);
 
-const isSelected = date.toDateString() === selectedDay.toDateString();
+    return fallbackColors[index];
 
-return React.createElement('button', {
+  };
 
-key: idx,
 
-onClick: () => {
 
-if (view === 'daily') {
+  const getRegionEmoji = (region) => {
 
-setSelectedDay(date);
+    const emojis = {
 
-} else if (view === 'weekly') {
+      'Charlotte': '🟡', 'Triad': '🟣', 'Raleigh': '🟤', 'Asheville': '⛰️', 'Wilmington': '🌊', 'Durham': '🐂'
 
-setCurrentWeek(getMonday(date));
+    };
 
-} else {
+    return emojis[region] || '📍';
 
-setCurrentMonth(date);
+  };
 
-}
 
-setShowDatePicker(false);
 
-},
+  const renderSearchSuggestions = () => {
 
-className: `py-1 text-sm rounded-full ${isSelected ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`
+    if (!showSuggestions || searchSuggestions.length === 0) {
 
-}, date.getDate());
+        return null;
 
-})
+    }
 
-)
+    return React.createElement('div', { className: 'absolute top-full w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-30 overflow-hidden' },
 
-);
+        React.createElement('ul', { className: 'divide-y divide-gray-100' },
 
-};
+            ...searchSuggestions.map((suggestion, index) =>
 
+                React.createElement('li', { key: index },
 
-const renderCleanersModal = () => {
+                    React.createElement('button', {
 
-const uniqueCleanersMap = new Map();
+                        className: 'w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700',
 
-availabilityData.forEach(c => {
+                        onClick: () => handleSuggestionClick(suggestion)
 
-if (!uniqueCleanersMap.has(c.id)) {
+                    }, suggestion.label)
 
-uniqueCleanersMap.set(c.id, c);
+                )
 
-}
+            )
 
-});
+        )
 
-const uniqueCleaners = Array.from(uniqueCleanersMap.values());
+    );
 
+  };
 
-const groupedByRegion = uniqueCleaners.reduce((acc, cleaner) => {
 
-const region = cleaner.region || 'Uncategorized';
 
-if (!acc[region]) {
+  const renderDatePicker = () => {
 
-acc[region] = [];
+    const days = getCalendarDays(datePickerMonth);
 
-}
+    return React.createElement('div', { className: 'absolute top-full mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-20 p-4' },
 
-acc[region].push(cleaner);
+      React.createElement('div', { className: 'flex items-center justify-between mb-3' },
 
-return acc;
+        React.createElement('button', {
 
-}, {});
+          onClick: () => setDatePickerMonth(new Date(datePickerMonth.getFullYear(), datePickerMonth.getMonth() - 1)),
 
+          className: 'px-2 py-1 hover:bg-gray-100 rounded-full'
 
+        }, '‹'),
 
-const regionsForFilter = ['all', ...Object.keys(groupedByRegion).sort()];
+        React.createElement('div', { className: 'font-semibold text-sm' }, datePickerMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })),
 
+        React.createElement('button', {
 
+          onClick: () => setDatePickerMonth(new Date(datePickerMonth.getFullYear(), datePickerMonth.getMonth() + 1)),
 
-return React.createElement('div', {
+          className: 'px-2 py-1 hover:bg-gray-100 rounded-full'
 
-className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4',
+        }, '›')
 
-onClick: () => setShowCleanersModal(false)
+      ),
 
-},
+      React.createElement('div', { className: 'grid grid-cols-7 gap-1 text-center text-xs text-gray-500' },
 
-React.createElement('div', {
+        ...['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => React.createElement('div', { key: i, className: 'p-1' }, d))
 
-className: 'bg-white rounded-xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col p-6 md:p-8',
+      ),
 
-onClick: (e) => e.stopPropagation()
+      React.createElement('div', { className: 'grid grid-cols-7 gap-1' },
 
-},
+        ...days.map((date, idx) => {
 
-React.createElement('div', { className: 'flex-shrink-0' },
+          if (!date) return React.createElement('div', { key: `empty-${idx}` });
 
-React.createElement('h2', { className: 'text-2xl font-bold text-gray-800 mb-4' }, 'Cleaner Directory'),
+          const isSelected = date.toDateString() === selectedDay.toDateString();
 
-React.createElement('div', { className: 'flex gap-2 mb-6 border-b pb-4 overflow-x-auto' },
+          return React.createElement('button', {
 
-...regionsForFilter.map(region => {
+            key: idx,
 
-const isSelected = cleanerModalRegionFilter === region;
+            onClick: () => {
 
-return React.createElement('button', {
+              if (view === 'daily') {
 
-key: region,
+                setSelectedDay(date);
 
-onClick: () => setCleanerModalRegionFilter(region),
+              } else if (view === 'weekly') {
 
-className: `flex-shrink-0 px-4 py-2 text-sm font-semibold rounded-lg ${isSelected ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`
+                setCurrentWeek(getMonday(date));
 
-}, region)
+              } else {
 
-})
+                setCurrentMonth(date);
 
-)
+              }
 
-),
+              setShowDatePicker(false);
 
-React.createElement('div', { className: 'overflow-y-auto' },
+            },
 
-...Object.keys(groupedByRegion).sort().filter(region => cleanerModalRegionFilter === 'all' || region === cleanerModalRegionFilter).map(region =>
+            className: `py-1 text-sm rounded-full ${isSelected ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`
 
-React.createElement('div', { key: region, className: 'mb-8' },
+          }, date.getDate());
 
-React.createElement('h3', { className: 'text-lg font-bold text-gray-700 mb-4 border-b pb-2' }, region),
+        })
 
-React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
+      )
 
-...groupedByRegion[region].map(c =>
+    );
 
-React.createElement('div', { key: c.id, className: 'bg-gray-50 rounded-lg p-4 border border-gray-200' },
+  };
 
-React.createElement('div', { className: 'font-semibold text-gray-900 mb-2' }, c.fullName || c.name),
+  
 
-React.createElement('div', { className: 'text-sm text-gray-600' }, '📞 ', c.phone || 'No phone'),
+  const renderCleanersModal = () => {
 
-React.createElement('div', { className: 'text-sm text-gray-600' }, '✉️ ', c.email || 'No email'),
+      const uniqueCleanersMap = new Map();
 
-React.createElement('div', { className: 'text-sm text-gray-600' }, '💵 ', c.rate ? `${c.rate}/hour` : 'Rate not set'),
+      availabilityData.forEach(c => {
 
-React.createElement('div', { className: 'text-sm text-gray-500 mt-2 pt-2 border-t' }, 'Notes: ', c.notes || 'No notes.')
+          if (!uniqueCleanersMap.has(c.id)) {
 
-)
+              uniqueCleanersMap.set(c.id, c);
 
-)
+          }
 
-)
+      });
 
-)
+      const uniqueCleaners = Array.from(uniqueCleanersMap.values());
 
-)
+      
 
-),
+      const groupedByRegion = uniqueCleaners.reduce((acc, cleaner) => {
 
-React.createElement('button', {
+          const region = cleaner.region || 'Uncategorized';
 
-onClick: () => setShowCleanersModal(false),
+          if (!acc[region]) {
 
-className: 'mt-6 flex-shrink-0 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 self-center'
+              acc[region] = [];
 
-}, 'Close')
+          }
 
-)
+          acc[region].push(cleaner);
 
-);
+          return acc;
 
-};
+      }, {});
 
 
-const renderDailyViewMobile = () => {
 
-const weekMonday = getMonday(selectedDay);
+      const regionsForFilter = ['all', ...Object.keys(groupedByRegion).sort()];
 
-const weekString = weekMonday.toISOString().split('T')[0];
 
-const lowerQuery = searchQuery.toLowerCase();
 
-const dayPrefix = getDayOfWeekAbbrev(selectedDay);
+      return React.createElement('div', {
 
+          className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4',
 
-let filtered = availabilityData
+          onClick: () => setShowCleanersModal(false)
 
-.filter(c => c.weekStarting ? c.weekStarting === weekString : true)
+        },
 
-.filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
+        React.createElement('div', {
 
-.filter(c =>
+            className: 'bg-white rounded-xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col p-6 md:p-8',
 
-!lowerQuery ||
+            onClick: (e) => e.stopPropagation()
 
-c.name?.toLowerCase().includes(lowerQuery) ||
+          },
 
-c.fullName?.toLowerCase().includes(lowerQuery) ||
+          React.createElement('div', { className: 'flex-shrink-0' },
 
-c.region?.toLowerCase().includes(lowerQuery) ||
+              React.createElement('h2', { className: 'text-2xl font-bold text-gray-800 mb-4' }, 'Cleaner Directory'),
 
-c.notes?.toLowerCase().includes(lowerQuery)
+              React.createElement('div', { className: 'flex gap-2 mb-6 border-b pb-4 overflow-x-auto' },
 
-);
+                ...regionsForFilter.map(region => {
 
+                    const isSelected = cleanerModalRegionFilter === region;
 
+                    return React.createElement('button', {
 
-if (filtered.length === 0) {
+                        key: region,
 
-return React.createElement('div', { className: 'text-center py-12 text-gray-500' }, 'No cleaners found for this day.');
+                        onClick: () => setCleanerModalRegionFilter(region),
 
-}
+                        className: `flex-shrink-0 px-4 py-2 text-sm font-semibold rounded-lg ${isSelected ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`
 
+                    }, region)
 
-return React.createElement('div', { className: 'space-y-4' },
+                })
 
-...filtered.map(c => {
+              )
 
-return React.createElement('div', { key: c.id, className: 'bg-gray-50 rounded-lg p-4' },
+          ),
 
-React.createElement('div', { className: 'flex justify-between items-center mb-3' },
+          React.createElement('div', { className: 'overflow-y-auto' },
 
-React.createElement('div', null,
+            ...Object.keys(groupedByRegion).sort().filter(region => cleanerModalRegionFilter === 'all' || region === cleanerModalRegionFilter).map(region => 
 
-React.createElement('div', { className: 'font-bold text-gray-800' }, c.name),
+                React.createElement('div', { key: region, className: 'mb-8' },
 
-React.createElement('div', { className: 'text-xs text-gray-500' }, c.region)
+                    React.createElement('h3', { className: 'text-lg font-bold text-gray-700 mb-4 border-b pb-2' }, region),
 
-),
+                    React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
 
-React.createElement('button', {
+                      ...groupedByRegion[region].map(c => 
 
-onClick: () => openSlotDetails(selectedDay, 'morning'),
+                        React.createElement('div', { key: c.id, className: 'bg-gray-50 rounded-lg p-4 border border-gray-200' },
 
-className: 'px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-md'
+                            React.createElement('div', { className: 'font-semibold text-gray-900 mb-2' }, c.fullName || c.name),
 
-}, 'Details')
+                            React.createElement('div', { className: 'text-sm text-gray-600' }, '📞 ', c.phone || 'No phone'),
 
-),
+                            React.createElement('div', { className: 'text-sm text-gray-600' }, '✉️ ', c.email || 'No email'),
 
-React.createElement('div', { className: 'grid grid-cols-4 sm:grid-cols-7 gap-1 text-center' },
+                            React.createElement('div', { className: 'text-sm text-gray-600' }, '💵 ', c.rate ? `${c.rate}/hour` : 'Rate not set'),
 
-...hourlySlots.map(hour => {
+                            React.createElement('div', { className: 'text-sm text-gray-500 mt-2 pt-2 border-t' }, 'Notes: ', c.notes || 'No notes.')
 
-const status = c[`${dayPrefix}_${hour}`];
+                        )
 
-const isAvailable = status === 'AVAILABLE';
+                      )
 
-const isBooked = status?.startsWith('BOOKED');
+                    )
 
-let bgColor = 'bg-gray-200';
+                )
 
-if (isAvailable) bgColor = 'bg-green-400';
+            )
 
-if (isBooked) bgColor = 'bg-red-400';
+          ),
 
+          React.createElement('button', {
 
+            onClick: () => setShowCleanersModal(false),
 
-return React.createElement('div', { key: `${c.id}-${hour}` },
+            className: 'mt-6 flex-shrink-0 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 self-center'
 
-React.createElement('div', { className: 'text-xs text-gray-500 mb-1' }, hour),
+          }, 'Close')
 
-React.createElement('div', { className: `w-full h-3 rounded ${bgColor}` })
+        )
 
-);
+      );
 
-})
+  };
 
-)
+  
 
-);
+  const renderDailyViewMobile = () => {
 
-})
+    const weekMonday = getMonday(selectedDay);
 
-);
+    const weekString = weekMonday.toISOString().split('T')[0];
 
-};
+    const lowerQuery = searchQuery.toLowerCase();
 
+    const dayPrefix = getDayOfWeekAbbrev(selectedDay);
 
+    
 
-if (loading && availabilityData.length === 0) {
+    let filtered = availabilityData
 
-return React.createElement('div', { className: 'min-h-screen bg-gray-50 flex items-center justify-center' },
+        .filter(c => c.weekStarting ? c.weekStarting === weekString : true)
 
-React.createElement('div', { className: 'text-center' },
+        .filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
 
-React.createElement('div', { className: 'text-4xl mb-4' }, '🧹'),
+        .filter(c => 
 
-React.createElement('div', { className: 'text-xl font-semibold text-gray-700' }, 'Loading DustBusters Calendar...'),
+            !lowerQuery || 
 
-networkError
+            c.name?.toLowerCase().includes(lowerQuery) || 
 
-? React.createElement('div', { className: 'mt-4 p-3 bg-red-100 text-red-700 text-sm rounded-md' }, networkError)
+            c.fullName?.toLowerCase().includes(lowerQuery) ||
 
-: React.createElement('div', { className: 'text-sm text-gray-500 mt-2' }, 'Connecting to your data...')
+            c.region?.toLowerCase().includes(lowerQuery) ||
 
-)
+            c.notes?.toLowerCase().includes(lowerQuery)
 
-);
+        );
 
-}
 
 
-const availableLabel =
+    if (filtered.length === 0) {
 
-view === 'daily' ? 'Available Today' :
+        return React.createElement('div', { className: 'text-center py-12 text-gray-500' }, 'No cleaners found for this day.');
 
-view === 'monthly' ? 'Available This Month' :
+    }
 
-'Available This Week';
+    
 
+    return React.createElement('div', { className: 'space-y-4' },
 
+        ...filtered.map(c => {
 
-return React.createElement('div', { className: 'min-h-screen bg-gray-50 p-2 md:p-5' },
+            return React.createElement('div', { key: c.id, className: 'bg-gray-50 rounded-lg p-4' },
 
-networkError && React.createElement('div', { className: 'max-w-7xl mx-auto mb-4' },
+                React.createElement('div', { className: 'flex justify-between items-center mb-3' },
 
-React.createElement('div', { className: 'p-4 bg-red-100 text-red-800 rounded-lg shadow-md' }, networkError)
+                    React.createElement('div', null,
 
-),
+                        React.createElement('div', { className: 'font-bold text-gray-800' }, c.name),
 
-React.createElement('div', { className: 'max-w-7xl mx-auto mb-4' },
+                        React.createElement('div', { className: 'text-xs text-gray-500' }, c.region)
 
-React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4 sm:p-5 flex items-center justify-between' },
+                    ),
 
-React.createElement('div', { className: 'flex items-center gap-3' },
+                    React.createElement('button', {
 
-React.createElement('div', { className: 'text-2xl sm:text-3xl' }, '🧹'),
+                      onClick: () => openSlotDetails(selectedDay, 'morning'), 
 
-React.createElement('div', null,
+                      className: 'px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-md'
 
-React.createElement('h1', { className: 'text-lg sm:text-2xl font-bold text-gray-800' }, 'DustBusters Calendar'),
+                    }, 'Details')
 
-lastSync && React.createElement('p', { className: 'text-xs text-gray-500' },
+                ),
 
-`Last updated ${lastSync.toLocaleTimeString()}`
+                React.createElement('div', { className: 'grid grid-cols-4 sm:grid-cols-7 gap-1 text-center' },
 
-)
+                    ...hourlySlots.map(hour => {
 
-)
+                        const status = c[`${dayPrefix}_${hour}`];
 
-),
+                        const isAvailable = status === 'AVAILABLE';
 
-React.createElement('button', {
+                        const isBooked = status?.startsWith('BOOKED');
 
-onClick: loadAvailabilityData,
+                        let bgColor = 'bg-gray-200';
 
-disabled: loading,
+                        if (isAvailable) bgColor = 'bg-green-400';
 
-className: 'flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 text-sm'
+                        if (isBooked) bgColor = 'bg-red-400';
 
-},
 
-loading ? 'Refreshing...' : 'Refresh'
 
-)
+                        return React.createElement('div', { key: `${c.id}-${hour}` },
 
-)
+                            React.createElement('div', { className: 'text-xs text-gray-500 mb-1' }, hour),
 
-),
+                            React.createElement('div', { className: `w-full h-3 rounded ${bgColor}` })
 
-React.createElement('div', { className: 'max-w-7xl mx-auto mb-4' },
+                        );
 
-React.createElement('div', { className: 'bg-gradient-to-r from-purple-600 to-purple-800 rounded-xl shadow-sm p-4 flex items-center gap-4 text-white' },
+                    })
 
-React.createElement('div', { className: 'text-2xl' }, '🤖'),
+                )
 
-React.createElement('div', { className: 'flex-1' },
+            );
 
-React.createElement('div', { className: 'font-semibold text-sm sm:text-base' }, 'AI Assistant Active'),
+        })
 
-React.createElement('div', { className: 'text-xs sm:text-sm opacity-90' }, 'Click a slot for AI suggestions')
+    );
 
-),
+  };
 
-React.createElement('button', {
 
-className: 'px-4 py-2 bg-white text-purple-600 rounded-lg font-semibold text-sm hover:bg-gray-50',
 
-onClick: () => alert('AI Assistant coming soon!')
+  if (loading && availabilityData.length === 0) {
 
-}, 'Ask AI')
+    return React.createElement('div', { className: 'min-h-screen bg-gray-50 flex items-center justify-center' },
 
-)
+      React.createElement('div', { className: 'text-center' },
 
-),
+        React.createElement('div', { className: 'text-4xl mb-4' }, '🧹'),
 
-React.createElement('div', { className: 'max-w-7xl mx-auto mb-4' },
+        React.createElement('div', { className: 'text-xl font-semibold text-gray-700' }, 'Loading DustBusters Calendar...'),
 
-React.createElement('div', { className: 'grid grid-cols-2 lg:grid-cols-4 gap-4' },
+        networkError 
 
-React.createElement('div', {
+            ? React.createElement('div', { className: 'mt-4 p-3 bg-red-100 text-red-700 text-sm rounded-md' }, networkError)
 
-className: 'bg-white rounded-xl shadow-sm p-4 cursor-pointer hover:bg-gray-50 transition-colors',
+            : React.createElement('div', { className: 'text-sm text-gray-500 mt-2' }, 'Connecting to your data...')
 
-onClick: () => {
+      )
 
-setCleanerModalRegionFilter('all');
+    );
 
-setShowCleanersModal(true);
+  }
 
-}
+  
 
-},
+  const availableLabel =
 
-React.createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Total Cleaners'),
+    view === 'daily' ? 'Available Today' :
 
-React.createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, dynamicStats.totalCleaners)
+    view === 'monthly' ? 'Available This Month' :
 
-),
+    'Available This Week';
 
-React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' },
 
-React.createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, availableLabel),
 
-React.createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, dynamicStats.cleanersAvailable)
+  return React.createElement('div', { className: 'min-h-screen bg-gray-50 p-2 md:p-5' },
 
-),
+    networkError && React.createElement('div', { className: 'max-w-7xl mx-auto mb-4' }, 
 
-React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' },
+        React.createElement('div', { className: 'p-4 bg-red-100 text-red-800 rounded-lg shadow-md' }, networkError)
 
-React.createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Booked Slots'),
+    ),
 
-React.createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, dynamicStats.bookedSlots)
+    React.createElement('div', { className: 'max-w-7xl mx-auto mb-4' },
 
-),
+      React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4 sm:p-5 flex items-center justify-between' },
 
-React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' },
+        React.createElement('div', { className: 'flex items-center gap-3' },
 
-React.createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Open Slots'),
+          React.createElement('div', { className: 'text-2xl sm:text-3xl' }, '🧹'),
 
-React.createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, dynamicStats.openSlots)
+          React.createElement('div', null,
 
-)
+            React.createElement('h1', { className: 'text-lg sm:text-2xl font-bold text-gray-800' }, 'DustBusters Calendar'),
 
-)
+            lastSync && React.createElement('p', { className: 'text-xs text-gray-500' }, 
 
-),
+              `Last updated ${lastSync.toLocaleTimeString()}`
 
-React.createElement('div', { className: 'max-w-7xl mx-auto mb-4' },
+            )
 
-React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' },
+          )
 
-React.createElement('div', { className: 'relative' },
+        ),
 
-React.createElement('span', {
+        React.createElement('button', {
 
-className: 'absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400',
+          onClick: loadAvailabilityData,
 
-style: { fontSize: '16px' }
+          disabled: loading,
 
-}, '🔍'),
+          className: 'flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 text-sm'
 
-React.createElement('input', {
+        },
 
-type: 'text',
+          loading ? 'Refreshing...' : 'Refresh'
 
-placeholder: 'Search cleaner, region, or date...',
+        )
 
-value: searchQuery,
+      )
 
-onChange: (e) => setSearchQuery(e.target.value),
+    ),
 
-onFocus: () => setShowSuggestions(true),
+    React.createElement('div', { className: 'max-w-7xl mx-auto mb-4' },
 
-onBlur: () => setTimeout(() => setShowSuggestions(false), 150),
+      React.createElement('div', { className: 'bg-gradient-to-r from-purple-600 to-purple-800 rounded-xl shadow-sm p-4 flex items-center gap-4 text-white' },
 
-className: 'w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none'
+        React.createElement('div', { className: 'text-2xl' }, '🤖'),
 
-}),
+        React.createElement('div', { className: 'flex-1' },
 
-renderSearchSuggestions()
+          React.createElement('div', { className: 'font-semibold text-sm sm:text-base' }, 'AI Assistant Active'),
 
-)
+          React.createElement('div', { className: 'text-xs sm:text-sm opacity-90' }, 'Click a slot for AI suggestions')
 
-)
+        ),
 
-),
+        React.createElement('button', { 
 
-React.createElement('div', { className: 'max-w-7xl mx-auto mb-4' },
+          className: 'px-4 py-2 bg-white text-purple-600 rounded-lg font-semibold text-sm hover:bg-gray-50',
 
-React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-3 sm:p-4' },
+          onClick: () => alert('AI Assistant coming soon!')
 
-React.createElement('div', { className: 'flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4' },
+        }, 'Ask AI')
 
-React.createElement('div', { className: 'flex flex-col sm:flex-row sm:items-center gap-3' },
+      )
 
-React.createElement('div', {className: 'flex items-center gap-2'},
+    ),
 
-['daily', 'weekly', 'monthly'].map(v =>
+    React.createElement('div', { className: 'max-w-7xl mx-auto mb-4' },
 
-React.createElement('button', {
+      React.createElement('div', { className: 'grid grid-cols-2 lg:grid-cols-4 gap-4' },
 
-key: v,
+        React.createElement('div', { 
 
-onClick: () => handleViewChange(v),
+            className: 'bg-white rounded-xl shadow-sm p-4 cursor-pointer hover:bg-gray-50 transition-colors',
 
-className: `px-4 py-2.5 rounded-lg font-medium text-sm transition-colors ${
+            onClick: () => {
 
-view === v ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                setCleanerModalRegionFilter('all');
 
-}`
+                setShowCleanersModal(true);
 
-}, v.charAt(0).toUpperCase() + v.slice(1))
+            }
 
-)
+          },
 
-),
+          React.createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Total Cleaners'),
 
-React.createElement('div', { className: 'flex gap-2 flex-wrap' },
+          React.createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, dynamicStats.totalCleaners)
 
-availableRegions.map(region => {
+        ),
 
-const color = getRegionColor(region);
+        React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' },
 
-const emoji = region === 'all' ? '' : getRegionEmoji(region.charAt(0).toUpperCase() + region.slice(1));
+          React.createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, availableLabel),
 
-const fullLabel = region === 'all' ? 'All Regions' : `${emoji} ${region.charAt(0).toUpperCase() + region.slice(1)}`;
+          React.createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, dynamicStats.cleanersAvailable)
 
+        ),
 
-return React.createElement('button', {
+        React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' },
 
-key: region,
+          React.createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Booked Slots'),
 
-onClick: () => setSelectedRegion(region.toLowerCase()),
+          React.createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, dynamicStats.bookedSlots)
 
-className: `px-3 py-2.5 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-colors ${
+        ),
 
-selectedRegion === region.toLowerCase()
+        React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' },
 
-? `bg-${color}-500 text-white`
+          React.createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Open Slots'),
 
-: `bg-${color}-50 text-${color}-700 hover:bg-${color}-100`
+          React.createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, dynamicStats.openSlots)
 
-}`
+        )
 
-}, fullLabel);
+      )
 
-})
+    ),
 
-)
+    React.createElement('div', { className: 'max-w-7xl mx-auto mb-4' },
 
-),
+      React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' },
 
-React.createElement('div', { className: 'flex items-center gap-2 relative self-center' },
+        React.createElement('div', { className: 'relative' },
 
-React.createElement('button', {
+          React.createElement('span', { 
 
-onClick: () => {
+            className: 'absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400',
 
-if (view === 'daily') setSelectedDay(new Date(selectedDay.getTime() - 86400000));
+            style: { fontSize: '16px' }
 
-else if (view === 'weekly') setCurrentWeek(new Date(currentWeek.getTime() - 604800000));
+          }, '🔍'),
 
-else setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+          React.createElement('input', {
 
-},
+            type: 'text',
 
-className: 'px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600'
+            placeholder: 'Search cleaner, region, or date...',
 
-}, '←'),
+            value: searchQuery,
 
-React.createElement('button', {
+            onChange: (e) => setSearchQuery(e.target.value),
 
-onClick: () => {
+            onFocus: () => setShowSuggestions(true),
 
-let initialDate;
+            onBlur: () => setTimeout(() => setShowSuggestions(false), 150),
 
-if (view === 'daily') initialDate = selectedDay;
+            className: 'w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none'
 
-else if (view === 'weekly') initialDate = currentWeek;
+          }),
 
-else initialDate = currentMonth;
+          renderSearchSuggestions()
 
-setDatePickerMonth(initialDate);
+        )
 
-setShowDatePicker(!showDatePicker);
+      )
 
-},
+    ),
 
-className: 'px-2 py-2 font-semibold text-gray-800 w-36 sm:w-auto sm:min-w-[250px] text-center text-sm cursor-pointer hover:bg-gray-100 rounded-md border border-gray-300'
+    React.createElement('div', { className: 'max-w-7xl mx-auto mb-4' },
 
-},
+      React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-3 sm:p-4' },
 
-view === 'daily' ? selectedDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) :
+        React.createElement('div', { className: 'flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4' },
 
-view === 'weekly' ? `Week of ${weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` :
+          React.createElement('div', { className: 'flex flex-col sm:flex-row sm:items-center gap-3' },
 
-currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+            React.createElement('div', {className: 'flex items-center gap-2'},
 
-),
+              ['daily', 'weekly', 'monthly'].map(v =>
 
-React.createElement('button', {
+                React.createElement('button', {
 
-onClick: () => {
+                  key: v,
 
-const today = new Date();
+                  onClick: () => handleViewChange(v),
 
-setSelectedDay(today);
+                  className: `px-4 py-2.5 rounded-lg font-medium text-sm transition-colors ${
 
-setCurrentWeek(getMonday(today));
+                    view === v ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
 
-setCurrentMonth(today);
+                  }`
 
-},
+                }, v.charAt(0).toUpperCase() + v.slice(1))
 
-className: 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium'
+              )
 
-}, 'Today'),
+            ),
 
-React.createElement('button', {
+            React.createElement('div', { className: 'flex gap-2 flex-wrap' },
 
-onClick: () => {
+              availableRegions.map(region => {
 
-if (view === 'daily') setSelectedDay(new Date(selectedDay.getTime() + 86400000));
+                const color = getRegionColor(region);
 
-else if (view === 'weekly') setCurrentWeek(new Date(currentWeek.getTime() + 604800000));
+                const emoji = region === 'all' ? '' : getRegionEmoji(region.charAt(0).toUpperCase() + region.slice(1));
 
-else setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+                const fullLabel = region === 'all' ? 'All Regions' : `${emoji} ${region.charAt(0).toUpperCase() + region.slice(1)}`;
 
-},
+                
 
-className: 'px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600'
+                return React.createElement('button', {
 
-}, '→'),
+                  key: region,
 
-showDatePicker && renderDatePicker()
+                  onClick: () => setSelectedRegion(region.toLowerCase()),
 
-)
+                  className: `px-3 py-2.5 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-colors ${
 
-)
+                    selectedRegion === region.toLowerCase() 
 
-)
+                      ? `bg-${color}-500 text-white` 
 
-),
+                      : `bg-${color}-50 text-${color}-700 hover:bg-${color}-100`
 
-view === 'daily' && React.createElement('div', { className: 'max-w-7xl mx-auto' },
+                  }`
 
-React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-3 sm:p-7' },
+                }, fullLabel);
 
-React.createElement('div', { className: 'hidden lg:block overflow-x-auto' },
+              })
 
-React.createElement('div', { className: 'min-w-[1000px]' },
+            )
 
-(() => {
+          ),
 
-const weekMonday = getMonday(selectedDay);
+          React.createElement('div', { className: 'flex items-center gap-2 relative self-center' },
 
-const weekString = weekMonday.toISOString().split('T')[0];
+            React.createElement('button', {
 
-const lowerQuery = searchQuery.toLowerCase();
+              onClick: () => {
 
-let filtered = availabilityData
+                if (view === 'daily') setSelectedDay(new Date(selectedDay.getTime() - 86400000));
 
-.filter(c => c.weekStarting ? c.weekStarting === weekString : true)
+                else if (view === 'weekly') setCurrentWeek(new Date(currentWeek.getTime() - 604800000));
 
-.filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
+                else setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
 
-.filter(c =>
+              },
 
-!lowerQuery ||
+              className: 'px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600'
 
-c.name?.toLowerCase().includes(lowerQuery) ||
+            }, '←'),
 
-c.fullName?.toLowerCase().includes(lowerQuery) ||
+            React.createElement('button', { 
 
-c.region?.toLowerCase().includes(lowerQuery) ||
+                onClick: () => {
 
-c.notes?.toLowerCase().includes(lowerQuery)
+                    let initialDate;
 
-);
+                    if (view === 'daily') initialDate = selectedDay;
 
-if (filtered.length === 0) {
+                    else if (view === 'weekly') initialDate = currentWeek;
 
-return React.createElement('div', { className: 'text-center py-12 text-gray-500' }, 'No cleaners found for this day.');
+                    else initialDate = currentMonth;
 
-}
+                    setDatePickerMonth(initialDate);
 
-return React.createElement('div', {
+                    setShowDatePicker(!showDatePicker);
 
-className: 'grid gap-px bg-gray-300 border border-gray-300',
+                },
 
-style: { gridTemplateColumns: `150px repeat(${filtered.length}, 1fr)` }
+                className: 'px-2 py-2 font-semibold text-gray-800 w-36 sm:w-auto sm:min-w-[250px] text-center text-sm cursor-pointer hover:bg-gray-100 rounded-md border border-gray-300'
 
-},
+            },
 
-React.createElement('div', { className: 'bg-gray-800 text-white p-2 sm:p-4 font-semibold text-center text-sm' }, 'Time'),
+              view === 'daily' ? selectedDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) :
 
-...filtered.map(c =>
+              view === 'weekly' ? `Week of ${weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` :
 
-React.createElement('div', { key: c.id, className: 'bg-gray-800 text-white p-2 sm:p-4 font-semibold text-center text-xs sm:text-sm' },
+              currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
-React.createElement('div', { className: 'font-medium' }, c.name),
+            ),
 
-React.createElement('div', { className: 'text-xs font-normal opacity-80 mt-1' }, c.region)
+             React.createElement('button', {
 
-)
+              onClick: () => {
 
-),
+                const today = new Date();
 
-...hourlySlots.flatMap(hour =>
+                setSelectedDay(today);
 
-[
+                setCurrentWeek(getMonday(today));
 
-React.createElement('div', { key: `time-${hour}`, className: 'bg-gray-700 text-white p-3 sm:p-4 flex items-center justify-center font-medium text-sm' }, hour),
+                setCurrentMonth(today);
 
-...filtered.map(c => {
+              },
 
-const dayPrefix = getDayOfWeekAbbrev(selectedDay);
+              className: 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium'
 
-const status = c[`${dayPrefix}_${hour}`];
+            }, 'Today'),
 
-const isAvailable = status === 'AVAILABLE';
+            React.createElement('button', {
 
-const isBooked = status?.startsWith('BOOKED');
+              onClick: () => {
 
-return React.createElement('div', {
+                if (view === 'daily') setSelectedDay(new Date(selectedDay.getTime() + 86400000));
 
-key: `${c.id}-${hour}`,
+                else if (view === 'weekly') setCurrentWeek(new Date(currentWeek.getTime() + 604800000));
 
-onClick: () => openSlotDetails(selectedDay, hour),
+                else setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
 
-className: `p-3 sm:p-4 cursor-pointer hover:opacity-80 transition-all flex items-center justify-center ${isAvailable ? 'bg-green-500' : isBooked ? 'bg-red-500' : 'bg-gray-300'}`
+              },
 
-},
+              className: 'px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600'
 
-React.createElement('div', { className: 'text-white text-center font-bold text-lg' }, isAvailable ? '✓' : isBooked ? '✗' : '—')
+            }, '→'),
 
-);
+            showDatePicker && renderDatePicker()
 
-})
+          )
 
-]
+        )
 
-)
+      )
 
-);
+    ),
 
-})()
+    view === 'daily' && React.createElement('div', { className: 'max-w-7xl mx-auto' },
 
-)
+      React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-3 sm:p-7' },
 
-),
+         React.createElement('div', { className: 'hidden lg:block overflow-x-auto' },
 
-React.createElement('div', { className: 'block lg:hidden' }, renderDailyViewMobile())
+            React.createElement('div', { className: 'min-w-[1000px]' },
 
-)
+              (() => {
 
-),
+                const weekMonday = getMonday(selectedDay);
 
-view === 'weekly' && React.createElement('div', { className: 'max-w-7xl mx-auto' },
+                const weekString = weekMonday.toISOString().split('T')[0];
 
-React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-3 sm:p-7 overflow-x-auto' },
+                const lowerQuery = searchQuery.toLowerCase();
 
-React.createElement('div', { className: 'min-w-[1200px]' },
+                let filtered = availabilityData
 
-React.createElement('div', { className: 'grid grid-cols-8 gap-px bg-gray-300 border border-gray-300 mb-px' },
+                  .filter(c => c.weekStarting ? c.weekStarting === weekString : true)
 
-React.createElement('div', { className: 'bg-gray-800 text-white p-4 font-semibold text-center text-sm' }, 'Time Slot'),
+                  .filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion)
 
-...dayNames.map((day, idx) => {
+                  .filter(c => 
 
-const date = weekDates[idx];
+                    !lowerQuery || 
 
-const isToday = date.toDateString() === new Date().toDateString();
+                    c.name?.toLowerCase().includes(lowerQuery) || 
 
-return React.createElement('div', {
+                    c.fullName?.toLowerCase().includes(lowerQuery) ||
 
-key: idx,
+                    c.region?.toLowerCase().includes(lowerQuery) ||
 
-onClick: () => {
+                    c.notes?.toLowerCase().includes(lowerQuery)
 
-setSelectedDay(date);
+                  );
 
-setView('daily');
+                if (filtered.length === 0) {
 
-},
+                  return React.createElement('div', { className: 'text-center py-12 text-gray-500' }, 'No cleaners found for this day.');
 
-className: `p-3 sm:p-4 font-semibold text-center text-sm cursor-pointer hover:opacity-80 transition-colors ${isToday ? 'bg-yellow-300 text-yellow-800' : 'bg-gray-800 text-white hover:bg-blue-500'}`
+                }
 
-},
+                
 
-day.substring(0,3),
+                const dayPrefix = getDayOfWeekAbbrev(selectedDay);
 
-React.createElement('div', { className: 'text-xs font-normal mt-1' },
+                
 
-date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                const mergedBookings = filtered.map(c => {
 
-)
+                  const bookingGroups = [];
 
-);
+                  let currentGroup = null;
 
-})
+                  
 
-),
+                  hourlySlots.forEach((hour, idx) => {
 
-...timeBlocks.map((block) =>
+                    const status = c[`${dayPrefix}_${hour}`];
 
-React.createElement('div', { key: block.id, className: 'grid grid-cols-8 gap-px bg-gray-300 border-l border-r border-b border-gray-300' },
+                    const bookingDetails = parseBookingDetails(status);
 
-React.createElement('div', { className: 'bg-gray-700 text-white p-4 flex flex-col justify-center' },
+                    
 
-React.createElement('div', { className: 'font-medium text-sm' }, `${block.emoji} ${block.label}`),
+                    if (bookingDetails) {
 
-React.createElement('div', { className: 'text-xs opacity-80 mt-1' }, block.time)
+                      if (!currentGroup || currentGroup.jobNumber !== bookingDetails.jobNumber) {
 
-),
+                        currentGroup = {
 
-...weekDates.map((date, dayIdx) => {
+                          ...bookingDetails,
 
-const { available, booked, total } = getCleanersForSlot(date, block.id);
+                          startHour: hour,
 
-const isToday = date.toDateString() === new Date().toDateString();
+                          startIdx: idx,
 
-return React.createElement('div', {
+                          endHour: hour,
 
-key: dayIdx,
+                          endIdx: idx,
 
-onClick: () => openSlotDetails(date, block.id),
+                          slots: [hour]
 
-className: `p-2 sm:p-3 min-h-[90px] sm:min-h-[100px] relative cursor-pointer hover:bg-gray-100 transition-colors ${isToday ? 'bg-yellow-50' : 'bg-white'}`
+                        };
 
-},
+                        bookingGroups.push(currentGroup);
 
-total > 0 && React.createElement('div', { className: 'absolute top-2 right-2 bg-blue-500 text-white text-xs font-semibold px-2 py-1 rounded-full' }, total),
+                      } else {
 
-React.createElement('div', { className: 'flex flex-wrap gap-1' },
+                        currentGroup.endHour = hour;
 
-...available.slice(0, 6).map((cleaner) =>
+                        currentGroup.endIdx = idx;
 
-React.createElement('div', {
+                        currentGroup.slots.push(hour);
 
-key: cleaner.id,
+                      }
 
-className: 'inline-block px-2 py-0.5 sm:px-2.5 sm:py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium hover:scale-105 transition-transform cursor-pointer',
+                    } else {
 
-title: cleaner.name
+                      currentGroup = null;
 
-}, cleaner.name)
+                    }
 
-),
+                  });
 
-...booked.slice(0, 3).map((cleaner) =>
+                  
 
-React.createElement('div', {
+                  return { cleaner: c, bookingGroups };
 
-key: cleaner.id,
+                });
 
-className: 'inline-block px-2 py-0.5 sm:px-2.5 sm:py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium',
+                
 
-title: cleaner.name
+                return React.createElement('div', { 
 
-}, cleaner.name)
+                  className: 'grid gap-px bg-gray-300 border border-gray-300',
 
-),
+                  style: { gridTemplateColumns: `150px repeat(${filtered.length}, 1fr)` }
 
-total === 0 && React.createElement('div', { className: 'text-gray-400 text-xs italic' }, 'No availability')
+                },
 
-)
+                  React.createElement('div', { className: 'bg-gray-800 text-white p-2 sm:p-4 font-semibold text-center text-sm' }, 'Time'),
 
-);
+                  ...filtered.map(c =>
 
-})
+                    React.createElement('div', { key: c.id, className: 'bg-gray-800 text-white p-2 sm:p-4 font-semibold text-center text-xs sm:text-sm' },
 
-)
+                      React.createElement('div', { className: 'font-medium' }, c.name),
 
-)
+                      React.createElement('div', { className: 'text-xs font-normal opacity-80 mt-1' }, c.region)
 
-)
+                    )
 
-)
+                  ),
 
-),
+                  ...hourlySlots.flatMap((hour, hourIdx) =>
 
-view === 'monthly' && React.createElement('div', { className: 'max-w-7xl mx-auto' },
+                    [
 
-React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-3 sm:p-7' },
+                      React.createElement('div', { key: `time-${hour}`, className: 'bg-gray-700 text-white p-3 sm:p-4 flex items-center justify-center font-medium text-sm' }, hour),
 
-React.createElement('div', { className: 'grid grid-cols-7 gap-1 sm:gap-2' },
+                      ...mergedBookings.map(({ cleaner, bookingGroups }, cleanerIdx) => {
 
-...['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day =>
+                        const status = cleaner[`${dayPrefix}_${hour}`];
 
-React.createElement('div', { key: day, className: 'bg-gray-800 text-white p-2 sm:p-3 font-semibold text-center text-xs sm:text-sm rounded-lg' }, day)
+                        const isAvailable = status === 'AVAILABLE';
 
-),
+                        const isBooked = status?.startsWith('BOOKED');
 
-...monthDays.map((date, idx) => {
+                        
 
-if (!date) {
+                        const bookingGroup = bookingGroups.find(bg => bg.slots.includes(hour));
 
-return React.createElement('div', { key: `empty-${idx}`, className: 'bg-gray-50 rounded-lg' });
+                        const isFirstSlotOfBooking = bookingGroup && bookingGroup.startHour === hour;
 
-}
+                        const spanCount = bookingGroup ? bookingGroup.slots.length : 1;
 
-const availableCleaners = getAvailableCleanersForDay(date);
+                        
 
-const isToday = date.toDateString() === new Date().toDateString();
+                        if (bookingGroup && !isFirstSlotOfBooking) {
 
-return React.createElement('div', {
+                          return null;
 
-key: idx,
+                        }
 
-onClick: () => { setSelectedDay(date); setView('daily'); },
+                        
 
-className: `border-2 rounded-lg p-2 min-h-[80px] sm:min-h-[120px] cursor-pointer hover:border-blue-500 transition-colors ${isToday ? 'border-yellow-400 bg-yellow-100' : 'border-gray-200 bg-white'}`
+                        if (isFirstSlotOfBooking && bookingGroup) {
 
-},
+                          return React.createElement('div', {
 
-React.createElement('div', {
+                            key: `${cleaner.id}-${hour}`,
 
-className: `font-semibold mb-2 text-sm ${isToday ? 'text-yellow-700' : 'text-gray-800'}`
+                            onClick: () => openSlotDetails(selectedDay, hour),
 
-}, date.getDate()),
+                            className: 'bg-red-500 p-2 cursor-pointer hover:opacity-80 transition-all flex flex-col items-center justify-center text-white',
 
-React.createElement('div', { className: 'flex flex-wrap gap-1' },
+                            style: { gridRow: `span ${spanCount}` }
 
-...availableCleaners.slice(0, 3).map(cleaner =>
+                          },
 
-React.createElement('div', {
+                            React.createElement('div', { className: 'font-bold text-sm' }, `Job #${bookingGroup.jobNumber}`),
 
-key: cleaner.id,
+                            React.createElement('div', { className: 'text-xs mt-1' }, bookingGroup.customer),
 
-className: 'w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center bg-green-100 text-green-800 rounded-full text-xs font-bold',
+                            React.createElement('div', { className: 'text-xs opacity-90' }, bookingGroup.timeSlot),
 
-title: cleaner.name,
+                            React.createElement('div', { className: 'text-xs opacity-75 mt-1' }, bookingGroup.cleaners)
 
-}, getInitials(cleaner.name))
+                          );
 
-),
+                        }
 
-availableCleaners.length > 3 && React.createElement('div', { className: 'w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center bg-gray-200 text-gray-600 rounded-full text-xs font-medium' }, `+${availableCleaners.length - 3}`)
+                        
 
-)
+                        return React.createElement('div', {
 
-);
+                          key: `${cleaner.id}-${hour}`,
 
-})
+                          onClick: () => openSlotDetails(selectedDay, hour),
 
-)
+                          className: `p-3 sm:p-4 cursor-pointer hover:opacity-80 transition-all flex items-center justify-center ${isAvailable ? 'bg-green-500' : 'bg-gray-300'}`
 
-)
+                        },
 
-),
+                          React.createElement('div', { className: 'text-white text-center font-bold text-lg' }, isAvailable ? '✓' : '—')
 
-showModal && selectedSlot && React.createElement('div', {
+                        );
 
-className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4',
+                      }).filter(Boolean)
 
-onClick: () => setShowModal(false)
+                    ]
 
-},
+                  )
 
-React.createElement('div', {
+                );
 
-className: 'bg-white rounded-xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto p-6 md:p-8',
+              })()
 
-onClick: (e) => e.stopPropagation()
+            )
 
-},
+         ),
 
-React.createElement('div', { className: 'text-xl md:text-2xl font-bold text-gray-800 mb-2' }, `${selectedSlot.day} ${selectedSlot.block.label}`),
+         React.createElement('div', { className: 'block lg:hidden' }, renderDailyViewMobile())
 
-React.createElement('div', { className: 'text-sm text-gray-600 mb-6' }, `${selectedSlot.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} • ${selectedSlot.block.time}`),
+      )
 
-React.createElement('div', { className: 'mb-6' },
+    ),
 
-React.createElement('h3', { className: 'font-semibold text-green-700 mb-3 text-lg' }, `✅ Available (${selectedSlot.available.length})`),
+    view === 'weekly' && React.createElement('div', { className: 'max-w-7xl mx-auto' },
 
-React.createElement('div', { className: 'space-y-3' },
+        React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-3 sm:p-7 overflow-x-auto' },
 
-selectedSlot.available.length > 0 ? selectedSlot.available.map(c =>
+            React.createElement('div', { className: 'min-w-[1200px]' },
 
-React.createElement('div', { key: c.id, className: 'bg-gray-50 rounded-lg p-4' },
+                React.createElement('div', { className: 'grid grid-cols-8 gap-px bg-gray-300 border border-gray-300 mb-px' },
 
-React.createElement('div', { className: 'flex justify-between items-start mb-2' },
+                    React.createElement('div', { className: 'bg-gray-800 text-white p-4 font-semibold text-center text-sm' }, 'Time Slot'),
 
-React.createElement('div', { className: 'font-semibold text-gray-900' }, c.fullName || c.name),
+                    ...dayNames.map((day, idx) => {
 
-React.createElement('div', { className: 'text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded' }, c.region)
+                        const date = weekDates[idx];
 
-),
+                        const isToday = date.toDateString() === new Date().toDateString();
 
-React.createElement('div', { className: 'text-sm text-gray-600 mb-1' }, c.phone || 'No phone'),
+                        return React.createElement('div', { 
 
-React.createElement('div', { className: 'text-sm text-gray-600' }, c.rate ? `${c.rate}/hour` : 'Rate not set')
+                            key: idx, 
 
-)
+                            onClick: () => {
 
-) : React.createElement('div', {className: 'text-sm text-gray-500'}, 'No cleaners available for this slot.')
+                                setSelectedDay(date);
 
-)
+                                setView('daily');
 
-),
+                            },
 
-selectedSlot.booked.length > 0 && React.createElement('div', { className: 'mb-6' },
+                            className: `p-3 sm:p-4 font-semibold text-center text-sm cursor-pointer hover:opacity-80 transition-colors ${isToday ? 'bg-yellow-300 text-yellow-800' : 'bg-gray-800 text-white hover:bg-blue-500'}`
 
-React.createElement('h3', { className: 'font-semibold text-red-700 mb-3 text-lg' }, `🔴 Booked (${selectedSlot.booked.length})`),
+                        },
 
-React.createElement('div', { className: 'space-y-2' },
+                            day.substring(0,3),
 
-selectedSlot.booked.map(c =>
+                            React.createElement('div', { className: 'text-xs font-normal mt-1' },
 
-React.createElement('div', { key: c.id, className: 'bg-red-50 rounded-lg p-3 opacity-60' },
+                                date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
-React.createElement('div', { className: 'font-medium text-gray-900' }, c.fullName || c.name),
+                            )
 
-React.createElement('div', { className: 'text-xs text-red-600' }, 'Already booked')
+                        );
 
-)
+                    })
 
-)
+                ),
 
-)
+                ...timeBlocks.map((block) =>
 
-),
+                    React.createElement('div', { key: block.id, className: 'grid grid-cols-8 gap-px bg-gray-300 border-l border-r border-b border-gray-300' },
 
-React.createElement('div', { className: 'flex flex-col sm:flex-row gap-3 mt-6' },
+                        React.createElement('div', { className: 'bg-gray-700 text-white p-4 flex flex-col justify-center' },
 
-React.createElement('button', {
+                            React.createElement('div', { className: 'font-medium text-sm' }, `${block.emoji} ${block.label}`),
 
-onClick: () => alert('AI booking assistant coming soon!'),
+                            React.createElement('div', { className: 'text-xs opacity-80 mt-1' }, block.time)
 
-className: 'flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700'
+                        ),
 
-}, '🤖 Book with AI Assist'),
+                        ...weekDates.map((date, dayIdx) => {
 
-React.createElement('button', {
+                            const { available, booked, total } = getCleanersForSlot(date, block.id);
 
-onClick: () => setShowModal(false),
+                            const isToday = date.toDateString() === new Date().toDateString();
 
-className: 'px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300'
+                            return React.createElement('div', {
 
-}, 'Close')
+                                key: dayIdx,
 
-)
+                                onClick: () => openSlotDetails(date, block.id),
 
-)
+                                className: `p-2 sm:p-3 min-h-[90px] sm:min-h-[100px] relative cursor-pointer hover:bg-gray-100 transition-colors ${isToday ? 'bg-yellow-50' : 'bg-white'}`
 
-),
+                            },
 
-showCleanersModal && renderCleanersModal()
+                                total > 0 && React.createElement('div', { className: 'absolute top-2 right-2 bg-blue-500 text-white text-xs font-semibold px-2 py-1 rounded-full' }, total),
 
-);
+                                React.createElement('div', { className: 'flex flex-wrap gap-1' },
+
+                                    ...available.slice(0, 6).map((cleaner) =>
+
+                                        React.createElement('div', {
+
+                                            key: cleaner.id,
+
+                                            className: 'inline-block px-2 py-0.5 sm:px-2.5 sm:py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium hover:scale-105 transition-transform cursor-pointer',
+
+                                            title: cleaner.name
+
+                                        }, cleaner.name)
+
+                                    ),
+
+                                    ...booked.slice(0, 3).map((cleaner) =>
+
+                                        React.createElement('div', {
+
+                                            key: cleaner.id,
+
+                                            className: 'inline-block px-2 py-0.5 sm:px-2.5 sm:py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium',
+
+                                            title: cleaner.name
+
+                                        }, cleaner.name)
+
+                                    ),
+
+                                    total === 0 && React.createElement('div', { className: 'text-gray-400 text-xs italic' }, 'No availability')
+
+                                )
+
+                            );
+
+                        })
+
+                    )
+
+                )
+
+            )
+
+        )
+
+    ),
+
+    view === 'monthly' && React.createElement('div', { className: 'max-w-7xl mx-auto' },
+
+      React.createElement('div', { className: 'bg-white rounded-xl shadow-sm p-3 sm:p-7' },
+
+        React.createElement('div', { className: 'grid grid-cols-7 gap-1 sm:gap-2' },
+
+          ...['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day =>
+
+            React.createElement('div', { key: day, className: 'bg-gray-800 text-white p-2 sm:p-3 font-semibold text-center text-xs sm:text-sm rounded-lg' }, day)
+
+          ),
+
+          ...monthDays.map((date, idx) => {
+
+            if (!date) {
+
+              return React.createElement('div', { key: `empty-${idx}`, className: 'bg-gray-50 rounded-lg' });
+
+            }
+
+            const availableCleaners = getAvailableCleanersForDay(date);
+
+            const isToday = date.toDateString() === new Date().toDateString();
+
+            return React.createElement('div', {
+
+              key: idx,
+
+              onClick: () => { setSelectedDay(date); setView('daily'); },
+
+              className: `border-2 rounded-lg p-2 min-h-[80px] sm:min-h-[120px] cursor-pointer hover:border-blue-500 transition-colors ${isToday ? 'border-yellow-400 bg-yellow-100' : 'border-gray-200 bg-white'}`
+
+            },
+
+              React.createElement('div', { 
+
+                  className: `font-semibold mb-2 text-sm ${isToday ? 'text-yellow-700' : 'text-gray-800'}` 
+
+              }, date.getDate()),
+
+              React.createElement('div', { className: 'flex flex-wrap gap-1' },
+
+                ...availableCleaners.slice(0, 3).map(cleaner => 
+
+                  React.createElement('div', {
+
+                    key: cleaner.id,
+
+                    className: 'w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center bg-green-100 text-green-800 rounded-full text-xs font-bold',
+
+                    title: cleaner.name,
+
+                  }, getInitials(cleaner.name))
+
+                ),
+
+                availableCleaners.length > 3 && React.createElement('div', { className: 'w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center bg-gray-200 text-gray-600 rounded-full text-xs font-medium' }, `+${availableCleaners.length - 3}`)
+
+              )
+
+            );
+
+          })
+
+        )
+
+      )
+
+    ),
+
+    showModal && selectedSlot && React.createElement('div', { 
+
+      className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4',
+
+      onClick: () => setShowModal(false)
+
+    },
+
+      React.createElement('div', { 
+
+        className: 'bg-white rounded-xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto p-6 md:p-8',
+
+        onClick: (e) => e.stopPropagation()
+
+      },
+
+        React.createElement('div', { className: 'text-xl md:text-2xl font-bold text-gray-800 mb-2' }, `${selectedSlot.day} ${selectedSlot.block.label}`),
+
+        React.createElement('div', { className: 'text-sm text-gray-600 mb-6' }, `${selectedSlot.date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} • ${selectedSlot.block.time}`),
+
+        React.createElement('div', { className: 'mb-6' },
+
+          React.createElement('h3', { className: 'font-semibold text-green-700 mb-3 text-lg' }, `✅ Available (${selectedSlot.available.length})`),
+
+          React.createElement('div', { className: 'space-y-3' },
+
+            selectedSlot.available.length > 0 ? selectedSlot.available.map(c =>
+
+              React.createElement('div', { key: c.id, className: 'bg-gray-50 rounded-lg p-4' },
+
+                React.createElement('div', { className: 'flex justify-between items-start mb-2' },
+
+                  React.createElement('div', { className: 'font-semibold text-gray-900' }, c.fullName || c.name),
+
+                  React.createElement('div', { className: 'text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded' }, c.region)
+
+                ),
+
+                React.createElement('div', { className: 'text-sm text-gray-600 mb-1' }, c.phone || 'No phone'),
+
+                React.createElement('div', { className: 'text-sm text-gray-600' }, c.rate ? `${c.rate}/hour` : 'Rate not set')
+
+              )
+
+            ) : React.createElement('div', {className: 'text-sm text-gray-500'}, 'No cleaners available for this slot.')
+
+          )
+
+        ),
+
+        selectedSlot.booked.length > 0 && React.createElement('div', { className: 'mb-6' },
+
+          React.createElement('h3', { className: 'font-semibold text-red-700 mb-3 text-lg' }, `🔴 Booked (${selectedSlot.booked.length})`),
+
+          React.createElement('div', { className: 'space-y-3' },
+
+            selectedSlot.booked.map(c => {
+
+              const dayPrefix = getDayOfWeekAbbrev(selectedSlot.date);
+
+              const firstBookedHour = selectedSlot.isHourly 
+
+                ? selectedSlot.block.label 
+
+                : selectedSlot.block.hours.find(h => c[`${dayPrefix}_${h}`]?.startsWith('BOOKED'));
+
+              
+
+              const bookingString = c[`${dayPrefix}_${firstBookedHour}`];
+
+              const bookingDetails = parseBookingDetails(bookingString);
+
+              
+
+              return React.createElement('div', { key: c.id, className: 'bg-red-50 rounded-lg p-4 border-2 border-red-200' },
+
+                React.createElement('div', { className: 'flex justify-between items-start mb-2' },
+
+                  React.createElement('div', { className: 'font-semibold text-gray-900' }, c.fullName || c.name),
+
+                  React.createElement('div', { className: 'text-xs px-2 py-1 bg-red-200 text-red-800 rounded font-bold' }, 
+
+                    bookingDetails ? `Job #${bookingDetails.jobNumber}` : 'Booked'
+
+                  )
+
+                ),
+
+                bookingDetails && React.createElement('div', { className: 'space-y-1 mt-3 text-sm' },
+
+                  React.createElement('div', { className: 'text-gray-700' },
+
+                    React.createElement('span', { className: 'font-semibold' }, '👤 Customer: '),
+
+                    bookingDetails.customer
+
+                  ),
+
+                  React.createElement('div', { className: 'text-gray-700' },
+
+                    React.createElement('span', { className: 'font-semibold' }, '📍 Region: '),
+
+                    bookingDetails.region
+
+                  ),
+
+                  React.createElement('div', { className: 'text-gray-700' },
+
+                    React.createElement('span', { className: 'font-semibold' }, '⏰ Time: '),
+
+                    bookingDetails.timeSlot
+
+                  ),
+
+                  React.createElement('div', { className: 'text-gray-700' },
+
+                    React.createElement('span', { className: 'font-semibold' }, '🧹 Cleaners: '),
+
+                    bookingDetails.cleaners
+
+                  )
+
+                )
+
+              );
+
+            })
+
+          )
+
+        ),
+
+        React.createElement('div', { className: 'flex flex-col sm:flex-row gap-3 mt-6' },
+
+          React.createElement('button', {
+
+            onClick: () => alert('AI booking assistant coming soon!'),
+
+            className: 'flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700'
+
+          }, '🤖 Book with AI Assist'),
+
+          React.createElement('button', {
+
+            onClick: () => setShowModal(false),
+
+            className: 'px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300'
+
+          }, 'Close')
+
+        )
+
+      )
+
+    ),
+
+    showCleanersModal && renderCleanersModal()
+
+  );
 
 };
 
