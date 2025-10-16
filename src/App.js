@@ -2,7 +2,7 @@
 const { useState, useEffect, useMemo, createElement } = React;
 
 // Import Config and Utils
-import { N8N_CLEANERS_URL, N8N_JOBS_URL, HOURLY_SLOTS, TIME_BLOCKS, DAY_NAMES, DAY_ABBREV } from './config.js';
+import { N8N_WEBHOOK_URL, HOURLY_SLOTS, TIME_BLOCKS } from './config.js';
 import { getMonday, getDayOfWeekAbbrev, getWeekDates, getCalendarDays, getRegionColor, getRegionEmoji } from './utils.js';
 
 // Import Components and Views
