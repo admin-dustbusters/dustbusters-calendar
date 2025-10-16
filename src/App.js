@@ -2,7 +2,7 @@
 const { useState, useEffect, useMemo, createElement } = React;
 
 // Import Config and Utils
-import { N8N_WEBHOOK_URL, HOURLY_SLOTS, TIME_BLOCKS, DAY_NAMES, DAY_ABBREV } from './config.js';
+import { N8N_WEBHOOK_URL, HOURLY_SLOTS, TIME_BLOCKS } from './config.js';
 import { getMonday, getDayOfWeekAbbrev, getWeekDates, getCalendarDays, getRegionColor, getRegionEmoji } from './utils.js';
 
 // Import Components and Views
@@ -29,6 +29,8 @@ const App = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerMonth, setDatePickerMonth] = useState(new Date());
   const [networkError, setNetworkError] = useState(null);
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [dynamicStats, setDynamicStats] = useState({
     totalCleaners: 0,
     cleanersAvailable: 0,
@@ -38,7 +40,7 @@ const App = () => {
 
   // --- DATA FETCHING ---
   const loadAvailabilityData = async () => {
-    if (!loading) setLoading(true); // Show loader on manual refresh too
+    if (!loading) setLoading(true);
     setNetworkError(null);
     try {
       const response = await fetch(N8N_WEBHOOK_URL);
@@ -49,7 +51,7 @@ const App = () => {
     } catch (error) {
       console.error('Error loading data:', error);
       setAvailabilityData([]);
-      setNetworkError(`Failed to load data. Please check connection. Error: ${error.message}`);
+      setNetworkError(`Failed to load data. Error: ${error.message}`);
     }
     setLoading(false);
   };
@@ -59,7 +61,7 @@ const App = () => {
     const interval = setInterval(loadAvailabilityData, 60000);
     return () => clearInterval(interval);
   }, []);
-
+  
   // --- MEMOIZED DERIVED STATE ---
   const availableRegions = useMemo(() => {
     const regions = new Set();
@@ -74,8 +76,9 @@ const App = () => {
   const weekDates = useMemo(() => getWeekDates(currentWeek), [currentWeek]);
   const monthDays = useMemo(() => getCalendarDays(currentMonth), [currentMonth]);
 
-  // --- STATS CALCULATION (FIXED) ---
+  // --- STATS CALCULATION ---
   useEffect(() => {
+    // ... (This logic is correct from the last step)
     const filteredByRegion = availabilityData
       .filter(c => c.id !== 'unassigned')
       .filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion);
@@ -90,33 +93,38 @@ const App = () => {
     let openSlots = 0;
     let bookedSlots = 0;
     const availableCleanerIds = new Set();
-
-    datesToScan.forEach(date => {
-      const dayPrefix = getDayOfWeekAbbrev(date);
-      const weekString = getMonday(date).toISOString().split('T')[0];
-      
-      const cleanersForThisWeek = filteredByRegion.filter(c => c.weekStarting === weekString);
-
-      cleanersForThisWeek.forEach(cleaner => {
-        HOURLY_SLOTS.forEach(hour => {
-          const status = cleaner[`${dayPrefix}_${hour}`];
-          if (status === 'AVAILABLE') {
-            openSlots++;
-            availableCleanerIds.add(cleaner.id);
-          } else if (status?.startsWith('BOOKED')) {
-            bookedSlots++;
-          }
-        });
-      });
-    });
     
+    datesToScan.forEach(date => {
+        if(!date) return;
+        const dayPrefix = getDayOfWeekAbbrev(date);
+        const weekString = getMonday(date).toISOString().split('T')[0];
+        
+        const relevantData = availabilityData.filter(d => d.weekStarting === weekString);
+
+        relevantData.forEach(item => {
+            if (selectedRegion !== 'all' && item.region?.toLowerCase() !== selectedRegion) return;
+            if (item.id === 'unassigned') return;
+
+            HOURLY_SLOTS.forEach(hour => {
+                const status = item[`${dayPrefix}_${hour}`];
+                if (status === 'AVAILABLE') {
+                    openSlots++;
+                    availableCleanerIds.add(item.id);
+                } else if (status?.startsWith('BOOKED')) {
+                    bookedSlots++;
+                }
+            });
+        });
+    });
+
     setDynamicStats({
-      totalCleaners: uniqueCleaners.size,
-      cleanersAvailable: availableCleanerIds.size,
-      bookedSlots: bookedSlots,
-      openSlots: openSlots,
+        totalCleaners: uniqueCleaners.size,
+        cleanersAvailable: availableCleanerIds.size,
+        bookedSlots: bookedSlots,
+        openSlots: openSlots,
     });
   }, [view, selectedDay, currentWeek, currentMonth, availabilityData, selectedRegion]);
+
 
   // --- CORE LOGIC & EVENT HANDLERS ---
   const getCleanersForSlot = (date, blockIdOrHour) => {
@@ -162,8 +170,8 @@ const App = () => {
   };
 
   const getAvailableCleanersForDay = (date) => {
-    // ... (This function is correct from the previous step, no changes needed)
-    const dayPrefix = getDayOfWeekAbbrev(date);
+    // ... (This function is correct, no changes needed)
+     const dayPrefix = getDayOfWeekAbbrev(date);
     const weekString = getMonday(date).toISOString().split('T')[0];
     const availableCleaners = new Map();
     const cleanersForThisWeek = availabilityData.filter(c => c.weekStarting === weekString && c.id !== 'unassigned');
@@ -177,7 +185,7 @@ const App = () => {
     });
     return Array.from(availableCleaners.values());
   };
-
+  
   const openSlotDetails = (date, blockIdOrHour) => {
     const { available, booked } = getCleanersForSlot(date, blockIdOrHour);
     const isHourly = HOURLY_SLOTS.includes(blockIdOrHour);
@@ -189,26 +197,18 @@ const App = () => {
     });
     setShowModal(true);
   };
-
+  
   const handleViewChange = (newView) => {
-    // Logic from original file to keep date context when switching views
-    if (view === 'daily') {
+     if (view === 'daily' && newView !== 'daily') {
       setCurrentWeek(getMonday(selectedDay));
       setCurrentMonth(new Date(selectedDay.getFullYear(), selectedDay.getMonth(), 1));
-    } else if (view === 'weekly') {
-      setSelectedDay(currentWeek);
-      setCurrentMonth(new Date(currentWeek.getFullYear(), currentWeek.getMonth(), 1));
-    } else if (view === 'monthly') {
-      const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-      setSelectedDay(firstDayOfMonth);
-      setCurrentWeek(getMonday(firstDayOfMonth));
     }
     setView(newView);
   };
-
+  
   // --- RENDER FUNCTIONS FOR UI ELEMENTS ---
   const renderDatePicker = () => {
-    // This is a complex element, keep its render logic here for now
+    // ... (This function is correct, no changes needed)
     const days = getCalendarDays(datePickerMonth);
     return createElement('div', { className: 'absolute top-full mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-20 p-4' },
       createElement('div', { className: 'flex items-center justify-between mb-3' },
@@ -257,8 +257,23 @@ const App = () => {
       ),
       createElement('button', { onClick: loadAvailabilityData, disabled: loading, className: 'flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 text-sm' }, loading ? 'Refreshing...' : 'Refresh')
     ),
+      
+    // AI Assistant Banner (RESTORED)
+    createElement('div', { className: 'max-w-7xl mx-auto mb-4' },
+      createElement('div', { className: 'bg-gradient-to-r from-purple-600 to-purple-800 rounded-xl shadow-sm p-4 flex items-center gap-4 text-white' },
+        createElement('div', { className: 'text-2xl' }, '🤖'),
+        createElement('div', { className: 'flex-1' },
+          createElement('div', { className: 'font-semibold text-sm sm:text-base' }, 'AI Assistant Active'),
+          createElement('div', { className: 'text-xs sm:text-sm opacity-90' }, 'Click a slot for AI suggestions')
+        ),
+        createElement('button', { 
+          className: 'px-4 py-2 bg-white text-purple-600 rounded-lg font-semibold text-sm hover:bg-gray-50',
+          onClick: () => alert('AI Assistant coming soon!')
+        }, 'Ask AI')
+      )
+    ),
 
-    // Stats Bar (Connected to new dynamicStats)
+    // Stats Bar
     createElement('div', { className: 'max-w-7xl mx-auto mb-4 grid grid-cols-2 lg:grid-cols-4 gap-4' },
       createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4 cursor-pointer hover:bg-gray-50 transition-colors', onClick: () => setShowCleanersModal(true) },
         createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Total Cleaners'),
@@ -277,8 +292,25 @@ const App = () => {
         createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, dynamicStats.openSlots)
       )
     ),
+      
+    // Search Bar (RESTORED)
+    createElement('div', { className: 'max-w-7xl mx-auto mb-4' },
+      createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' },
+        createElement('div', { className: 'relative' },
+          createElement('span', { className: 'absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400', style: { fontSize: '16px' } }, '🔍'),
+          createElement('input', {
+            type: 'text',
+            placeholder: 'Search cleaner, region, or notes...',
+            value: searchQuery,
+            onChange: (e) => setSearchQuery(e.target.value),
+            className: 'w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none'
+          }),
+          // Suggestions logic would go here if implemented
+        )
+      )
+    ),
 
-    // Controls Bar (Restored from original)
+    // Controls Bar
     createElement('div', { className: 'max-w-7xl mx-auto mb-4' },
       createElement('div', { className: 'bg-white rounded-xl shadow-sm p-3 sm:p-4' },
         createElement('div', { className: 'flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4' },
