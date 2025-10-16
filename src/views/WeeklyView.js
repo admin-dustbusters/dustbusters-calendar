@@ -1,5 +1,4 @@
 // src/views/WeeklyView.js
-
 const { createElement } = React;
 import { DAY_NAMES, TIME_BLOCKS } from '../config.js';
 
