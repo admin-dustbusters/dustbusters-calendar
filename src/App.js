@@ -65,13 +65,22 @@ const App = () => {
   // --- MEMOIZED DERIVED STATE ---
   const availableRegions = useMemo(() => {
     const regions = new Set();
+    // **HERE IS THE FIX:** We create a blacklist of region names to hide from the filter bar.
+    const excludedRegions = ['uncategorized', 'unknown', 'unassigned'];
+
     availabilityData.forEach(cleaner => {
-      if (cleaner.id !== 'unassigned' && cleaner.region && cleaner.region !== 'Unassigned') {
-        regions.add(cleaner.region);
+      if (cleaner.id !== 'unassigned' && cleaner.region) {
+        const lowerRegion = cleaner.region.toLowerCase();
+        // Only add the region if it's not in our exclusion list
+        if (!excludedRegions.includes(lowerRegion)) {
+          regions.add(cleaner.region);
+        }
       }
     });
     return ['all', ...Array.from(regions).sort()];
   }, [availabilityData]);
+
+  // ... rest of the App.js code ...
 
   const weekDates = useMemo(() => getWeekDates(currentWeek), [currentWeek]);
   const monthDays = useMemo(() => getCalendarDays(currentMonth), [currentMonth]);
