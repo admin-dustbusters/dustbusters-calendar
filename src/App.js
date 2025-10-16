@@ -37,69 +37,58 @@ const App = () => {
   });
 
   // --- DATA FETCHING ---
-const matchJobsToCleaners = (cleaners, jobs) => {
-  // Create a map for quick cleaner lookup by HCP ID
-  const cleanersByHcpId = new Map();
-  cleaners.forEach(cleaner => {
-    if (cleaner.hcp_id) {
-      cleanersByHcpId.set(cleaner.hcp_id, cleaner);
-    }
-  });
-  
-  // Process each job and mark slots as BOOKED
-  jobs.forEach(job => {
-    if (job.status === 'assigned' && job.hcpEmployeeId) {
-      const cleaner = cleanersByHcpId.get(job.hcpEmployeeId);
-      
-      if (cleaner && cleaner.weekStarting === job.weekStarting && job.slots) {
-        job.slots.forEach(slot => {
-          const fieldName = `${job.dayPrefix}_${slot}`;
-          cleaner[fieldName] = `BOOKED #${job.jobNumber} | ${job.customer}`;
-        });
-      }
-    }
-  });
-  
-  return cleaners;
-};
-
   const loadAvailabilityData = async () => {
-  if (!loading) setLoading(true);
-  setNetworkError(null);
-  
-  try {
-    console.log('🔄 Fetching cleaners and jobs...');
+    if (!loading) setLoading(true);
+    setNetworkError(null);
     
-    // Fetch both APIs in parallel
-    const [cleanersResponse, jobsResponse] = await Promise.all([
-      fetch(N8N_CLEANERS_URL),
-      fetch(N8N_JOBS_URL)
-    ]);
-    
-    if (!cleanersResponse.ok || !jobsResponse.ok) {
-      throw new Error('Failed to fetch data');
+    try {
+      console.log('🔄 Fetching data from:', N8N_WEBHOOK_URL);
+      const response = await fetch(N8N_WEBHOOK_URL);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Data received:', data);
+      
+      // Validate data structure
+      if (!data.cleaners || !Array.isArray(data.cleaners)) {
+        throw new Error('Invalid data format: missing cleaners array');
+      }
+      
+      // Log sample data for debugging
+      if (data.cleaners.length > 0) {
+        console.log('📊 Sample cleaner:', data.cleaners[0]);
+        console.log('📅 Total cleaners:', data.cleaners.length);
+        
+        // Check for weekStarting format
+        const withWeekStarting = data.cleaners.filter(c => c.weekStarting);
+        console.log('📅 Cleaners with weekStarting:', withWeekStarting.length);
+        
+        if (withWeekStarting.length > 0) {
+          console.log('📅 Sample weekStarting:', withWeekStarting[0].weekStarting);
+        }
+      }
+      
+      setAvailabilityData(data.cleaners || []);
+      setLastSync(new Date());
+      
+    } catch (error) {
+      console.error('❌ Error loading data:', error);
+      setAvailabilityData([]);
+      setNetworkError(`Failed to load data: ${error.message}`);
     }
     
-    const cleanersData = await cleanersResponse.json();
-    const jobsData = await jobsResponse.json();
-    
-    console.log('✅ Cleaners received:', cleanersData.cleaners?.length);
-    console.log('✅ Jobs received:', jobsData.jobs?.length);
-    
-    // Match jobs to cleaners
-    const mergedData = matchJobsToCleaners(cleanersData.cleaners || [], jobsData.jobs || []);
-    
-    setAvailabilityData(mergedData);
-    setLastSync(new Date());
-    
-  } catch (error) {
-    console.error('❌ Error loading data:', error);
-    setAvailabilityData([]);
-    setNetworkError(`Failed to load data: ${error.message}`);
-  }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadAvailabilityData();
+    const interval = setInterval(loadAvailabilityData, 60000); // Refresh every 60 seconds
+    return () => clearInterval(interval);
+  }, []);
   
-  setLoading(false);
-};
   // --- MEMOIZED DERIVED STATE ---
   const availableRegions = useMemo(() => {
     const regions = new Set();
