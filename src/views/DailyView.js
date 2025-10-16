@@ -1,4 +1,8 @@
 // src/views/DailyView.js - FIXED VERSION
+console.log('Rendering WeeklyView with props:', { 
+       weekDates, availabilityData, selectedRegion
+     });
+
 const { createElement } = React;
 import { HOURLY_SLOTS } from '../config.js';
 import { getMonday, getDayOfWeekAbbrev } from '../utils.js';
