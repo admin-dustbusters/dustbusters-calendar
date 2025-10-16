@@ -2,8 +2,8 @@
 const { useState, useEffect, useMemo, createElement } = React;
 
 // Import Config and Utils
-import { N8N_WEBHOOK_URL, HOURLY_SLOTS, TIME_BLOCKS } from './config.js';
-import { getMonday, getDayOfWeekAbbrev, getWeekDates, getCalendarDays, getRegionColor, getRegionEmoji, getInitials } from './utils.js';
+import { N8N_WEBHOOK_URL, HOURLY_SLOTS, TIME_BLOCKS, DAY_NAMES, DAY_ABBREV } from './config.js';
+import { getMonday, getDayOfWeekAbbrev, getWeekDates, getCalendarDays, getRegionColor, getRegionEmoji } from './utils.js';
 
 // Import Components and Views
 import SlotDetailsModal from './components/SlotDetailsModal.js';
@@ -13,7 +13,7 @@ import DailyView from './views/DailyView.js';
 import MonthlyView from './views/MonthlyView.js';
 
 const App = () => {
-  // --- STATE MANAGEMENT ---
+  // --- STATE MANAGEMENT (Complete) ---
   const [currentWeek, setCurrentWeek] = useState(getMonday(new Date()));
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState(new Date());
@@ -26,11 +26,19 @@ const App = () => {
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showCleanersModal, setShowCleanersModal] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerMonth, setDatePickerMonth] = useState(new Date());
   const [networkError, setNetworkError] = useState(null);
+  const [dynamicStats, setDynamicStats] = useState({
+    totalCleaners: 0,
+    cleanersAvailable: 0,
+    bookedSlots: 0,
+    openSlots: 0,
+  });
 
   // --- DATA FETCHING ---
   const loadAvailabilityData = async () => {
-    setLoading(true);
+    if (!loading) setLoading(true); // Show loader on manual refresh too
     setNetworkError(null);
     try {
       const response = await fetch(N8N_WEBHOOK_URL);
@@ -56,30 +64,63 @@ const App = () => {
   const availableRegions = useMemo(() => {
     const regions = new Set();
     availabilityData.forEach(cleaner => {
-      if (cleaner.id !== 'unassigned' && cleaner.region) {
+      if (cleaner.id !== 'unassigned' && cleaner.region && cleaner.region !== 'Unassigned') {
         regions.add(cleaner.region);
       }
     });
     return ['all', ...Array.from(regions).sort()];
   }, [availabilityData]);
 
-  const dynamicStats = useMemo(() => {
-    // Logic to calculate stats based on the current view and filters
-    // This is a simplified version; you can expand it as needed.
-    const totalCleaners = availabilityData.filter(c => c.id !== 'unassigned').length;
-    return {
-        totalCleaners: totalCleaners,
-        cleanersAvailable: 'N/A', // These would need more complex calculation
-        bookedSlots: 'N/A',
-        openSlots: 'N/A',
-    };
-  }, [availabilityData, view, selectedDay, currentWeek, currentMonth, selectedRegion]);
-
   const weekDates = useMemo(() => getWeekDates(currentWeek), [currentWeek]);
   const monthDays = useMemo(() => getCalendarDays(currentMonth), [currentMonth]);
 
-  // --- CORE LOGIC FUNCTIONS ---
+  // --- STATS CALCULATION (FIXED) ---
+  useEffect(() => {
+    const filteredByRegion = availabilityData
+      .filter(c => c.id !== 'unassigned')
+      .filter(c => selectedRegion === 'all' || c.region?.toLowerCase() === selectedRegion);
+
+    const uniqueCleaners = new Set(filteredByRegion.map(c => c.id));
+
+    let datesToScan = [];
+    if (view === 'daily') datesToScan = [selectedDay];
+    else if (view === 'weekly') datesToScan = weekDates;
+    else if (view === 'monthly') datesToScan = monthDays.filter(Boolean);
+
+    let openSlots = 0;
+    let bookedSlots = 0;
+    const availableCleanerIds = new Set();
+
+    datesToScan.forEach(date => {
+      const dayPrefix = getDayOfWeekAbbrev(date);
+      const weekString = getMonday(date).toISOString().split('T')[0];
+      
+      const cleanersForThisWeek = filteredByRegion.filter(c => c.weekStarting === weekString);
+
+      cleanersForThisWeek.forEach(cleaner => {
+        HOURLY_SLOTS.forEach(hour => {
+          const status = cleaner[`${dayPrefix}_${hour}`];
+          if (status === 'AVAILABLE') {
+            openSlots++;
+            availableCleanerIds.add(cleaner.id);
+          } else if (status?.startsWith('BOOKED')) {
+            bookedSlots++;
+          }
+        });
+      });
+    });
+    
+    setDynamicStats({
+      totalCleaners: uniqueCleaners.size,
+      cleanersAvailable: availableCleanerIds.size,
+      bookedSlots: bookedSlots,
+      openSlots: openSlots,
+    });
+  }, [view, selectedDay, currentWeek, currentMonth, availabilityData, selectedRegion]);
+
+  // --- CORE LOGIC & EVENT HANDLERS ---
   const getCleanersForSlot = (date, blockIdOrHour) => {
+    // ... (This function is correct from the previous step, no changes needed)
     const dayPrefix = getDayOfWeekAbbrev(date);
     const weekMonday = getMonday(date);
     const weekString = weekMonday.toISOString().split('T')[0];
@@ -113,28 +154,23 @@ const App = () => {
         
         if (isBookedInBlock) {
              booked.push(...bookingDetails);
-        } else if (isAvailableInBlock) {
-            if (c.id !== 'unassigned') {
-                available.push(c);
-            }
+        } else if (isAvailableInBlock && c.id !== 'unassigned') {
+            available.push(c);
         }
     });
     return { available, booked, total: available.length + booked.length };
   };
 
   const getAvailableCleanersForDay = (date) => {
+    // ... (This function is correct from the previous step, no changes needed)
     const dayPrefix = getDayOfWeekAbbrev(date);
     const weekString = getMonday(date).toISOString().split('T')[0];
     const availableCleaners = new Map();
-
     const cleanersForThisWeek = availabilityData.filter(c => c.weekStarting === weekString && c.id !== 'unassigned');
-    
     cleanersForThisWeek.forEach(cleaner => {
         for (const hour of HOURLY_SLOTS) {
             if (cleaner[`${dayPrefix}_${hour}`] === 'AVAILABLE') {
-                if (!availableCleaners.has(cleaner.id)) {
-                    availableCleaners.set(cleaner.id, cleaner);
-                }
+                if (!availableCleaners.has(cleaner.id)) availableCleaners.set(cleaner.id, cleaner);
                 break;
             }
         }
@@ -142,8 +178,6 @@ const App = () => {
     return Array.from(availableCleaners.values());
   };
 
-
-  // --- EVENT HANDLERS ---
   const openSlotDetails = (date, blockIdOrHour) => {
     const { available, booked } = getCleanersForSlot(date, blockIdOrHour);
     const isHourly = HOURLY_SLOTS.includes(blockIdOrHour);
@@ -156,15 +190,60 @@ const App = () => {
     setShowModal(true);
   };
 
-  const handleViewChange = (newView) => setView(newView);
+  const handleViewChange = (newView) => {
+    // Logic from original file to keep date context when switching views
+    if (view === 'daily') {
+      setCurrentWeek(getMonday(selectedDay));
+      setCurrentMonth(new Date(selectedDay.getFullYear(), selectedDay.getMonth(), 1));
+    } else if (view === 'weekly') {
+      setSelectedDay(currentWeek);
+      setCurrentMonth(new Date(currentWeek.getFullYear(), currentWeek.getMonth(), 1));
+    } else if (view === 'monthly') {
+      const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+      setSelectedDay(firstDayOfMonth);
+      setCurrentWeek(getMonday(firstDayOfMonth));
+    }
+    setView(newView);
+  };
 
-  // --- RENDER ---
+  // --- RENDER FUNCTIONS FOR UI ELEMENTS ---
+  const renderDatePicker = () => {
+    // This is a complex element, keep its render logic here for now
+    const days = getCalendarDays(datePickerMonth);
+    return createElement('div', { className: 'absolute top-full mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-20 p-4' },
+      createElement('div', { className: 'flex items-center justify-between mb-3' },
+        createElement('button', { onClick: () => setDatePickerMonth(new Date(datePickerMonth.getFullYear(), datePickerMonth.getMonth() - 1)), className: 'px-2 py-1 hover:bg-gray-100 rounded-full' }, '‹'),
+        createElement('div', { className: 'font-semibold text-sm' }, datePickerMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })),
+        createElement('button', { onClick: () => setDatePickerMonth(new Date(datePickerMonth.getFullYear(), datePickerMonth.getMonth() + 1)), className: 'px-2 py-1 hover:bg-gray-100 rounded-full' }, '›')
+      ),
+      createElement('div', { className: 'grid grid-cols-7 gap-1 text-center text-xs text-gray-500' }, ...['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => createElement('div', { key: i, className: 'p-1' }, d))),
+      createElement('div', { className: 'grid grid-cols-7 gap-1' },
+        ...days.map((date, idx) => {
+          if (!date) return createElement('div', { key: `empty-${idx}` });
+          const isSelected = date.toDateString() === selectedDay.toDateString();
+          return createElement('button', {
+            key: idx,
+            onClick: () => {
+              if (view === 'daily') setSelectedDay(date);
+              else if (view === 'weekly') setCurrentWeek(getMonday(date));
+              else setCurrentMonth(date);
+              setShowDatePicker(false);
+            },
+            className: `py-1 text-sm rounded-full ${isSelected ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`
+          }, date.getDate());
+        })
+      )
+    );
+  };
+
+  // --- TOP LEVEL RENDER ---
   if (loading && availabilityData.length === 0) {
-    return createElement('div', { className: 'min-h-screen bg-gray-50 flex items-center justify-center' }, 'Loading Calendar...');
+    return createElement('div', { className: 'min-h-screen bg-gray-50 flex items-center justify-center' }, /* ... Loading spinner ... */);
   }
 
+  const availableLabel = view === 'daily' ? 'Available Today' : view === 'monthly' ? 'Available This Month' : 'Available This Week';
+
   return createElement('div', { className: 'min-h-screen bg-gray-50 p-2 md:p-5' },
-    // Error Banner
     networkError && createElement('div', { className: 'max-w-7xl mx-auto mb-4 p-4 bg-red-100 text-red-800 rounded-lg' }, networkError),
     
     // Header
@@ -176,25 +255,67 @@ const App = () => {
           lastSync && createElement('p', { className: 'text-xs text-gray-500' }, `Last updated ${lastSync.toLocaleTimeString()}`)
         )
       ),
-      createElement('button', { onClick: loadAvailabilityData, disabled: loading, className: 'px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50' }, loading ? 'Refreshing...' : 'Refresh')
+      createElement('button', { onClick: loadAvailabilityData, disabled: loading, className: 'flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 text-sm' }, loading ? 'Refreshing...' : 'Refresh')
     ),
 
-    // Stats
+    // Stats Bar (Connected to new dynamicStats)
     createElement('div', { className: 'max-w-7xl mx-auto mb-4 grid grid-cols-2 lg:grid-cols-4 gap-4' },
-      createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4 cursor-pointer hover:bg-gray-50', onClick: () => setShowCleanersModal(true) },
+      createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4 cursor-pointer hover:bg-gray-50 transition-colors', onClick: () => setShowCleanersModal(true) },
         createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Total Cleaners'),
         createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, dynamicStats.totalCleaners)
       ),
-      // Other stats placeholders
-      createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' }, createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Available Slots'), createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, '-')),
-      createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' }, createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Booked Jobs'), createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, '-')),
-      createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' }, createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Unassigned Jobs'), createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, '-')),
+      createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' },
+        createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, availableLabel),
+        createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, dynamicStats.cleanersAvailable)
+      ),
+      createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' },
+        createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Booked Slots'),
+        createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, dynamicStats.bookedSlots)
+      ),
+      createElement('div', { className: 'bg-white rounded-xl shadow-sm p-4' },
+        createElement('div', { className: 'text-xs font-semibold text-gray-500 uppercase mb-2' }, 'Open Slots'),
+        createElement('div', { className: 'text-2xl sm:text-3xl font-bold text-gray-800' }, dynamicStats.openSlots)
+      )
     ),
 
-    // Controls
-    createElement('div', { className: 'max-w-7xl mx-auto mb-4 bg-white rounded-xl shadow-sm p-3 sm:p-4' },
-      // ... (Insert your control bar JSX/createElement calls here: view toggles, region filters, date navigation)
-      // This is the section with "Daily", "Weekly", "Monthly", Region buttons, and date arrows.
+    // Controls Bar (Restored from original)
+    createElement('div', { className: 'max-w-7xl mx-auto mb-4' },
+      createElement('div', { className: 'bg-white rounded-xl shadow-sm p-3 sm:p-4' },
+        createElement('div', { className: 'flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4' },
+          createElement('div', { className: 'flex flex-col sm:flex-row sm:items-center gap-3' },
+            createElement('div', {className: 'flex items-center gap-2'},
+              ['daily', 'weekly', 'monthly'].map(v =>
+                createElement('button', {
+                  key: v, onClick: () => handleViewChange(v),
+                  className: `px-4 py-2.5 rounded-lg font-medium text-sm transition-colors ${view === v ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`
+                }, v.charAt(0).toUpperCase() + v.slice(1))
+              )
+            ),
+            createElement('div', { className: 'flex gap-2 flex-wrap' },
+              availableRegions.map(region => {
+                const color = getRegionColor(region);
+                const emoji = region === 'all' ? '' : getRegionEmoji(region.charAt(0).toUpperCase() + region.slice(1));
+                const fullLabel = region === 'all' ? 'All Regions' : `${emoji} ${region.charAt(0).toUpperCase() + region.slice(1)}`;
+                return createElement('button', {
+                  key: region, onClick: () => setSelectedRegion(region.toLowerCase()),
+                  className: `px-3 py-2.5 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-colors ${selectedRegion === region.toLowerCase() ? `bg-${color}-500 text-white` : `bg-${color}-50 text-${color}-700 hover:bg-${color}-100`}`
+                }, fullLabel);
+              })
+            )
+          ),
+          createElement('div', { className: 'flex items-center gap-2 relative self-center' },
+            createElement('button', { onClick: () => { if (view === 'daily') setSelectedDay(new Date(selectedDay.getTime() - 86400000)); else if (view === 'weekly') setCurrentWeek(new Date(currentWeek.getTime() - 604800000)); else setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1)); }, className: 'px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600' }, '←'),
+            createElement('button', { onClick: () => { let initialDate = view === 'daily' ? selectedDay : view === 'weekly' ? currentWeek : currentMonth; setDatePickerMonth(initialDate); setShowDatePicker(!showDatePicker); }, className: 'px-2 py-2 font-semibold text-gray-800 w-36 sm:w-auto sm:min-w-[250px] text-center text-sm cursor-pointer hover:bg-gray-100 rounded-md border border-gray-300' },
+              view === 'daily' ? selectedDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) :
+              view === 'weekly' ? `Week of ${weekDates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` :
+              currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+            ),
+             createElement('button', { onClick: () => { const today = new Date(); setSelectedDay(today); setCurrentWeek(getMonday(today)); setCurrentMonth(today); }, className: 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium' }, 'Today'),
+            createElement('button', { onClick: () => { if (view === 'daily') setSelectedDay(new Date(selectedDay.getTime() + 86400000)); else if (view === 'weekly') setCurrentWeek(new Date(currentWeek.getTime() + 604800000)); else setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1)); }, className: 'px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600' }, '→'),
+            showDatePicker && renderDatePicker()
+          )
+        )
+      )
     ),
 
     // View Container
