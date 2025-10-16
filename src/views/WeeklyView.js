@@ -1,4 +1,8 @@
 // src/views/WeeklyView.js
+console.log('Rendering WeeklyView with props:', { 
+       weekDates, availabilityData, selectedRegion
+     });
+
 const { createElement } = React;
 import { DAY_NAMES, TIME_BLOCKS } from '../config.js';
 
