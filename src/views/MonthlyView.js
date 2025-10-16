@@ -1,8 +1,4 @@
 // src/views/MonthlyView.js
-console.log('Rendering WeeklyView with props:', { 
-       weekDates, availabilityData, selectedRegion
-     });
-
 const { createElement } = React;
 import { getInitials } from '../utils.js';
 
