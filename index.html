@@ -123,45 +123,40 @@
     </div>
 
     <!-- Core Scripts (Load in order) -->
-    <script src="config.js"></script>
-    <script src="utils.js"></script>
-    <script src="data-sync.js"></script>
-    <script src="calendar-engine.js"></script>
-    
-    <!-- View Scripts -->
-    <script src="views/weekly-view.js"></script>
-    <script src="views/daily-view.js"></script>
-    <script src="views/hourly-view.js"></script>
-    <script src="views/monthly-view.js"></script>
-    
-    <!-- Component Scripts -->
-    <script src="components/filters.js"></script>
-    <script src="components/cleaner-card.js"></script>
-    <script src="components/booking-panel.js"></script>
-    <script src="components/ai-assistant.js"></script>
-    
-    <!-- Initialize App -->
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 Starting DustBusters Calendar...');
-            
-            // Start data synchronization
-            dataSync.startAutoRefresh();
-            
-            // Initialize calendar engine
-            calendarEngine.initialize();
-            
-            // Setup modal close handlers
-            document.getElementById('modalClose').addEventListener('click', () => {
-                document.getElementById('jobModal').classList.remove('active');
-            });
-            
-            document.querySelector('.modal-backdrop').addEventListener('click', () => {
-                document.getElementById('jobModal').classList.remove('active');
-            });
-            
-            console.log('✅ Calendar initialized successfully!');
-        });
-    </script>
+   <!-- Core Scripts -->
+<script src="config.js"></script>
+<script src="utils.js"></script>
+<script src="data-sync.js"></script>
+
+<!-- View Scripts (before calendar engine) -->
+<script src="views/weekly-view.js"></script>
+<script src="views/daily-view.js"></script>
+<script src="views/hourly-view.js"></script>
+<script src="views/monthly-view.js"></script>
+
+<!-- Component Scripts -->
+<script src="components/filters.js"></script>
+<script src="components/cleaner-card.js"></script>
+<script src="components/booking-panel.js"></script>
+<script src="components/ai-assistant.js"></script>
+
+<!-- Finally: Calendar Engine -->
+<script src="calendar-engine.js"></script>
+
+<!-- Initialize App -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 Starting DustBusters Calendar...');
+    dataSync.startAutoRefresh();
+    calendarEngine.initialize();
+    document.getElementById('modalClose').addEventListener('click', () => {
+      document.getElementById('jobModal').classList.remove('active');
+    });
+    document.querySelector('.modal-backdrop').addEventListener('click', () => {
+      document.getElementById('jobModal').classList.remove('active');
+    });
+    console.log('✅ Calendar initialized successfully!');
+  });
+</script>
 </body>
 </html>
