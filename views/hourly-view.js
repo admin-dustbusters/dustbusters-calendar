@@ -1,7 +1,7 @@
 // Hourly View - Hour-by-Hour Schedule Display
 const HourlyView = {
   render(data) {
-    const container = document.getElementById('calendarGrid');
+    const container = document.getElementById('calendarGridHourly');
     if (!container) return;
 
     const { cleaners, date } = data;
@@ -75,7 +75,7 @@ const HourlyView = {
         <p><strong>Job:</strong> ${jobNumber}</p>
         <p><strong>Cleaner:</strong> ${cleanerName}</p>
         <p><strong>Customer:</strong> ${customer}</p>
-        ${address ? `<p><strong>Address:</strong> ${address}</p>` : ''}
+        ${address && address !== 'undefined' ? `<p><strong>Address:</strong> ${address}</p>` : ''}
       </div>
     `;
 
@@ -83,3 +83,6 @@ const HourlyView = {
     document.getElementById('jobModal').classList.add('active');
   }
 };
+
+// CRITICAL: Expose to global scope
+window.HourlyView = HourlyView;
