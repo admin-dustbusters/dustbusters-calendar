@@ -2,7 +2,7 @@
 const CONFIG = {
   // ⚠️ CHANGE THIS to your n8n webhook URL
   API: {
-    BASE_URL: 'http://dustbusters-n8n.duckdns.org:5678/webhook',
+    BASE_URL: 'https://dustbusters-n8n.duckdns.org/webhook',
     ENDPOINTS: {
       CALENDAR_DATA: '/calendar-data',
       CHECK_AVAILABILITY: '/check-availability',
