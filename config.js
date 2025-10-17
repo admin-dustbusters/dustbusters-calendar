@@ -1,6 +1,6 @@
 // DustBusters Calendar Configuration
 const CONFIG = {
-  // ⚠️ CHANGE THIS to your n8n webhook URL
+  // API Configuration
   API: {
     BASE_URL: 'https://dustbusters-n8n.duckdns.org/webhook',
     ENDPOINTS: {
@@ -12,6 +12,7 @@ const CONFIG = {
     TIMEOUT: 10000
   },
 
+  // Region Configuration
   REGIONS: {
     'Charlotte': { color: '#4299E1', label: 'Charlotte', emoji: '🏙️' },
     'Triad': { color: '#48BB78', label: 'Triad', emoji: '🌲' },
@@ -20,6 +21,15 @@ const CONFIG = {
     'Unassigned': { color: '#F56565', label: 'Unassigned', emoji: '❓' }
   },
 
+  // Status Configuration (ADDED - THIS WAS MISSING!)
+  STATUS: {
+    AVAILABLE: { color: '#48BB78', bg: '#F0FFF4', label: 'Available' },
+    BOOKED: { color: '#F56565', bg: '#FFF5F5', label: 'Booked' },
+    UNAVAILABLE: { color: '#A0AEC0', bg: '#F7FAFC', label: 'Unavailable' },
+    PENDING: { color: '#ECC94B', bg: '#FEFCBF', label: 'Pending' }
+  },
+
+  // Time Configuration
   TIME_SLOTS: {
     PERIODS: {
       MORNING: { label: 'Morning', slots: ['8am', '9am', '10am', '11am'] },
@@ -28,10 +38,12 @@ const CONFIG = {
     }
   },
 
+  // Days Configuration
   DAYS: {
     SHORT: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   },
 
+  // View Modes
   VIEWS: {
     HOURLY: 'hourly',
     DAILY: 'daily',
@@ -40,11 +52,13 @@ const CONFIG = {
     CLEANER: 'cleaner'
   },
 
+  // UI Configuration
   UI: {
     DEFAULT_VIEW: 'weekly',
     SEARCH_DEBOUNCE: 300
   },
 
+  // Cache Configuration
   CACHE: {
     ENABLED: true,
     KEY: 'dustbusters_calendar_data',
