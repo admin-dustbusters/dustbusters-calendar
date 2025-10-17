@@ -247,7 +247,7 @@ class CalendarEngine {
     return allJobs.filter(job => job.day === dayName);
   }
 
-  // Main render method
+  // Main render method - FIXED TO PASS DATA CORRECTLY
   render() {
     console.log(`🎨 Rendering ${this.currentView} view...`);
 
