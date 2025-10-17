@@ -12,7 +12,13 @@ window.CONFIG = {
     TIMEOUT: 10000
   },
 
-  // Region Configuration
+  // Region Configuration - DEFAULT COLORS/EMOJIS for auto-discovered regions
+  REGION_DEFAULTS: {
+    colors: ['#4299E1', '#48BB78', '#ECC94B', '#ED8936', '#9F7AEA', '#EC4899', '#14B8A6', '#F59E0B', '#06B6D4', '#8B5CF6'],
+    emojis: ['🏙️', '🌲', '🏛️', '🏖️', '⛰️', '🌆', '🏘️', '🌇', '🌄', '🏞️']
+  },
+
+  // Known regions (will be extended dynamically)
   REGIONS: {
     'Charlotte': { color: '#4299E1', label: 'Charlotte', emoji: '🏙️' },
     'Triad': { color: '#48BB78', label: 'Triad', emoji: '🌲' },
@@ -63,5 +69,55 @@ window.CONFIG = {
     ENABLED: false,
     KEY: 'dustbusters_calendar_data',
     EXPIRY: 300000
+  },
+
+  // NEW: Helper function to auto-generate region config
+  getRegionConfig(regionName) {
+    if (this.REGIONS[regionName]) {
+      return this.REGIONS[regionName];
+    }
+    
+    // Auto-generate for new region
+    const existingCount = Object.keys(this.REGIONS).length;
+    const colorIndex = existingCount % this.REGION_DEFAULTS.colors.length;
+    const emojiIndex = existingCount % this.REGION_DEFAULTS.emojis.length;
+    
+    const newConfig = {
+      color: this.REGION_DEFAULTS.colors[colorIndex],
+      label: regionName,
+      emoji: this.REGION_DEFAULTS.emojis[emojiIndex]
+    };
+    
+    // Add to REGIONS for future use
+    this.REGIONS[regionName] = newConfig;
+    
+    console.log(`✨ Auto-discovered new region: ${regionName}`, newConfig);
+    
+    return newConfig;
+  },
+
+  // NEW: Discover all regions from cleaner data
+  discoverRegions(cleaners) {
+    if (!cleaners || !Array.isArray(cleaners)) return;
+    
+    const discoveredRegions = new Set();
+    cleaners.forEach(cleaner => {
+      if (cleaner.region && cleaner.region.trim() !== '') {
+        discoveredRegions.add(cleaner.region);
+      }
+    });
+
+    // Auto-add any new regions
+    let newRegionsAdded = 0;
+    discoveredRegions.forEach(region => {
+      if (!this.REGIONS[region]) {
+        this.getRegionConfig(region);
+        newRegionsAdded++;
+      }
+    });
+
+    if (newRegionsAdded > 0) {
+      console.log(`📍 Discovered ${newRegionsAdded} new region(s). Total regions: ${Object.keys(this.REGIONS).length}`);
+    }
   }
 };
