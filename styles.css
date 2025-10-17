@@ -1,0 +1,481 @@
+/* Reset */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f7fa;
+    color: #2d3748;
+    line-height: 1.6;
+}
+
+.container { max-width: 1600px; margin: 0 auto; padding: 0 1rem; }
+
+/* Header */
+.header {
+    background: white;
+    border-bottom: 2px solid #e2e8f0;
+    padding: 1rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.header h1 {
+    font-size: 1.5rem;
+    color: #2d3748;
+    margin-bottom: 0.5rem;
+}
+
+.header-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.week-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.week-display {
+    font-weight: 600;
+    padding: 0 1rem;
+    white-space: nowrap;
+    min-width: 200px;
+    text-align: center;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid #cbd5e0;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.btn:hover { background: #edf2f7; }
+
+.btn-primary {
+    background: #4299e1;
+    color: white;
+    border-color: #4299e1;
+}
+
+.btn-primary:hover { background: #3182ce; }
+
+.status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: #718096;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #48bb78;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Filters */
+.filters {
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 1rem 0;
+}
+
+.filter-row {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filter-group label {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.region-btns {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.region-btn {
+    padding: 0.4rem 0.8rem;
+    border: 2px solid;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    opacity: 0.5;
+    background: white;
+}
+
+.region-btn.active { opacity: 1; }
+
+.search-box {
+    padding: 0.5rem;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    min-width: 200px;
+}
+
+.view-select {
+    padding: 0.5rem;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    background: white;
+    cursor: pointer;
+}
+
+/* Stats */
+.stats {
+    background: white;
+    padding: 1rem 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.stats .container {
+    display: flex;
+    gap: 2rem;
+}
+
+.stat-box {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: #718096;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2d3748;
+}
+
+/* Main Content */
+.main { padding: 2rem 0; }
+
+.view-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.calendar-wrapper { overflow-x: auto; }
+
+.calendar-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1200px;
+}
+
+.calendar-table th {
+    background: #f7fafc;
+    padding: 0.75rem;
+    text-align: left;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #4a5568;
+    border-bottom: 2px solid #e2e8f0;
+    position: sticky;
+    top: 0;
+}
+
+.calendar-table th.name-col {
+    min-width: 150px;
+    position: sticky;
+    left: 0;
+    background: #f7fafc;
+    z-index: 10;
+}
+
+.calendar-table td {
+    padding: 0.5rem;
+    border: 1px solid #e2e8f0;
+    font-size: 0.875rem;
+    vertical-align: top;
+}
+
+.calendar-table td.name-col {
+    position: sticky;
+    left: 0;
+    background: white;
+    font-weight: 500;
+    z-index: 5;
+}
+
+.cleaner-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.cleaner-name {
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.cleaner-region {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    display: inline-block;
+    width: fit-content;
+}
+
+.slot {
+    min-height: 60px;
+    padding: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.slot:hover { opacity: 0.9; transform: scale(1.02); }
+
+.slot.available {
+    background: #f0fff4;
+    border-left: 3px solid #48bb78;
+    color: #2f855a;
+}
+
+.slot.booked {
+    background: #fff5f5;
+    border-left: 3px solid #f56565;
+}
+
+.slot.unavailable {
+    background: #f7fafc;
+    color: #a0aec0;
+}
+
+.job-info {
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
+.job-number {
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 0.25rem;
+}
+
+.job-customer {
+    color: #4a5568;
+    margin-bottom: 0.25rem;
+}
+
+.job-address {
+    color: #718096;
+    font-size: 0.7rem;
+}
+
+/* Cleaner View */
+.cleaner-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+    padding: 1.5rem;
+}
+
+.cleaner-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.cleaner-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.cleaner-card-name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #2d3748;
+}
+
+.cleaner-card-region {
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.cleaner-card-phone {
+    font-size: 0.875rem;
+    color: #718096;
+    margin-top: 0.25rem;
+}
+
+.schedule-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.schedule-day {
+    padding: 0.75rem;
+    background: #f7fafc;
+    border-radius: 6px;
+}
+
+.schedule-day-name {
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 0.5rem;
+}
+
+.schedule-slots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.schedule-slot {
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.schedule-slot.booked {
+    background: #fed7d7;
+    color: #c53030;
+}
+
+.schedule-slot.available {
+    background: #c6f6d5;
+    color: #2f855a;
+}
+
+/* Loading */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,0.95);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.loading-overlay.hidden { display: none; }
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #e2e8f0;
+    border-top-color: #4299e1;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+}
+
+.modal.active { display: block; }
+
+.modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 2rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #718096;
+    line-height: 1;
+}
+
+.modal-close:hover { color: #2d3748; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .header h1 { font-size: 1.25rem; }
+    .week-nav { flex-wrap: wrap; }
+    .week-display { flex: 1 0 100%; text-align: center; }
+    .filter-row { flex-direction: column; align-items: stretch; }
+    .stats .container { flex-direction: column; gap: 0.5rem; }
+    .cleaner-grid { grid-template-columns: 1fr; padding: 1rem; }
+}
+
+/* Animations */
+@keyframes slideIn {
+    from { transform: translateY(100px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
