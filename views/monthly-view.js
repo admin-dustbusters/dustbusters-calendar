@@ -1,7 +1,7 @@
 // Monthly View - Full Month Calendar Overview
 const MonthlyView = {
   render(data) {
-    const container = document.getElementById('calendarGrid');
+    const container = document.getElementById('calendarGridMonthly');
     if (!container) return;
 
     const { cleaners, monthStart, monthEnd } = data;
@@ -103,3 +103,6 @@ const MonthlyView = {
     return { available, booked };
   }
 };
+
+// CRITICAL: Expose to global scope
+window.MonthlyView = MonthlyView;
