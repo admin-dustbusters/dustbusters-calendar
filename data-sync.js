@@ -35,15 +35,9 @@ class DataSync {
     const url = CONFIG.API.BASE_URL + CONFIG.API.ENDPOINTS.CALENDAR_DATA;
     
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), CONFIG.API.TIMEOUT);
-      
       const response = await fetch(url, {
-        signal: controller.signal,
         headers: { 'Accept': 'application/json' }
       });
-      
-      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -54,6 +48,9 @@ class DataSync {
       if (!data || !data.cleaners || !Array.isArray(data.cleaners)) {
         throw new Error('Invalid data format');
       }
+      
+      // NEW: Auto-discover regions from data
+      CONFIG.discoverRegions(data.cleaners);
       
       this.data = data;
       this.lastFetch = new Date();
@@ -71,6 +68,9 @@ class DataSync {
       if (CONFIG.CACHE.ENABLED) {
         const cachedData = Utils.storage.get(CONFIG.CACHE.KEY);
         if (cachedData) {
+          // NEW: Also discover regions from cached data
+          CONFIG.discoverRegions(cachedData.cleaners);
+          
           this.data = cachedData;
           this.notify(cachedData);
           return { success: true, data: cachedData, fromCache: true };
