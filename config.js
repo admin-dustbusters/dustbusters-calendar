@@ -21,7 +21,7 @@ window.CONFIG = {
     'Unassigned': { color: '#F56565', label: 'Unassigned', emoji: '❓' }
   },
 
-  // Status Configuration (ADDED - THIS WAS MISSING!)
+  // Status Configuration
   STATUS: {
     AVAILABLE: { color: '#48BB78', bg: '#F0FFF4', label: 'Available' },
     BOOKED: { color: '#F56565', bg: '#FFF5F5', label: 'Booked' },
@@ -60,7 +60,7 @@ window.CONFIG = {
 
   // Cache Configuration
   CACHE: {
-    ENABLED: true,
+    ENABLED: false,
     KEY: 'dustbusters_calendar_data',
     EXPIRY: 300000
   }
