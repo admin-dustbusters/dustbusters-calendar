@@ -4,7 +4,9 @@ const WeeklyView = {
     const container = document.getElementById('calendarGrid');
     if (!container) return;
 
-    const { cleaners, weekStart } = data;
+    // ✅ FIX: make sure weekStart always exists
+    const cleaners = Array.isArray(data?.cleaners) ? data.cleaners : [];
+    const weekStart = data?.weekStart ?? calendarEngine?.currentWeekStart ?? new Date();
 
     if (cleaners.length === 0) {
       container.innerHTML = '<p style="padding: 2rem; text-align: center;">No cleaners match your filters</p>';
