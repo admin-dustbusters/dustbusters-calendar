@@ -1,4 +1,4 @@
-// DustBusters Calendar Engine - Core Logic
+// DustBusters Calendar Engine - Core Logic (FIXED)
 class CalendarEngine {
   constructor() {
     this.currentDate = new Date();
@@ -134,6 +134,7 @@ class CalendarEngine {
     switch (this.currentView) {
       case CONFIG.VIEWS.WEEKLY:
       case CONFIG.VIEWS.DAILY:
+      case CONFIG.VIEWS.HOURLY:
         this.currentWeekStart = Utils.date.addDays(this.currentWeekStart, -7);
         break;
       case CONFIG.VIEWS.MONTHLY:
@@ -149,6 +150,7 @@ class CalendarEngine {
     switch (this.currentView) {
       case CONFIG.VIEWS.WEEKLY:
       case CONFIG.VIEWS.DAILY:
+      case CONFIG.VIEWS.HOURLY:
         this.currentWeekStart = Utils.date.addDays(this.currentWeekStart, 7);
         break;
       case CONFIG.VIEWS.MONTHLY:
@@ -218,44 +220,6 @@ class CalendarEngine {
     });
   }
 
-  // Get data for current view
-  getViewData() {
-    const cleaners = this.getFilteredCleaners();
-
-    switch (this.currentView) {
-      case CONFIG.VIEWS.WEEKLY:
-        return {
-          cleaners,
-          weekStart: this.currentWeekStart,
-          weekEnd: Utils.date.getWeekEnd(this.currentWeekStart),
-          jobs: dataSync.getWeekJobs(this.currentWeekStart)
-        };
-
-      case CONFIG.VIEWS.DAILY:
-        return {
-          cleaners,
-          date: this.currentDate,
-          jobs: this.getDayJobs(this.currentDate)
-        };
-
-      case CONFIG.VIEWS.MONTHLY:
-        return {
-          cleaners,
-          monthStart: this.currentMonthStart,
-          monthEnd: Utils.date.getMonthEnd(this.currentMonthStart)
-        };
-
-      case CONFIG.VIEWS.CLEANER:
-        return {
-          cleaners,
-          weekStart: this.currentWeekStart
-        };
-
-      default:
-        return { cleaners };
-    }
-  }
-
   // Get jobs for a specific day
   getDayJobs(date) {
     const weekStart = Utils.date.getWeekStart(date);
@@ -265,7 +229,7 @@ class CalendarEngine {
     return allJobs.filter(job => job.day === dayName);
   }
 
-  // Main render method
+  // Main render method - FIXED TO PASS DATA CORRECTLY
   render() {
     console.log(`🎨 Rendering ${this.currentView} view...`);
 
@@ -275,34 +239,54 @@ class CalendarEngine {
     // Render filters
     this.renderFilters();
 
-    // Render current view
+    // Render current view with proper data
     switch (this.currentView) {
       case CONFIG.VIEWS.HOURLY:
         if (window.HourlyView) {
-          HourlyView.render(this.getViewData());
+          const hourlyData = {
+            cleaners: this.getFilteredCleaners(),
+            date: this.currentDate
+          };
+          HourlyView.render(hourlyData);
         }
         break;
 
       case CONFIG.VIEWS.DAILY:
         if (window.DailyView) {
-          DailyView.render(this.getViewData());
+          const dailyData = {
+            cleaners: this.getFilteredCleaners(),
+            date: this.currentDate,
+            jobs: this.getDayJobs(this.currentDate)
+          };
+          DailyView.render(dailyData);
         }
         break;
 
       case CONFIG.VIEWS.WEEKLY:
         if (window.WeeklyView) {
-          WeeklyView.render(this.getViewData());
+          const weeklyData = {
+            cleaners: this.getFilteredCleaners(),
+            weekStart: this.currentWeekStart,
+            weekEnd: Utils.date.getWeekEnd(this.currentWeekStart),
+            jobs: dataSync.getWeekJobs(this.currentWeekStart)
+          };
+          WeeklyView.render(weeklyData);
         }
         break;
 
       case CONFIG.VIEWS.MONTHLY:
         if (window.MonthlyView) {
-          MonthlyView.render(this.getViewData());
+          const monthlyData = {
+            cleaners: this.getFilteredCleaners(),
+            monthStart: this.currentMonthStart,
+            monthEnd: Utils.date.getMonthEnd(this.currentMonthStart)
+          };
+          MonthlyView.render(monthlyData);
         }
         break;
 
       case CONFIG.VIEWS.CLEANER:
-        if (window.CleanerView) {
+        if (window.CleanerCard) {
           this.renderCleanerView();
         }
         break;
@@ -320,6 +304,7 @@ class CalendarEngine {
     switch (this.currentView) {
       case CONFIG.VIEWS.WEEKLY:
       case CONFIG.VIEWS.DAILY:
+      case CONFIG.VIEWS.HOURLY:
         display.textContent = Utils.date.formatWeekRange(this.currentWeekStart);
         break;
 
@@ -356,6 +341,11 @@ class CalendarEngine {
     if (!container) return;
 
     const cleaners = this.getFilteredCleaners();
+    
+    if (cleaners.length === 0) {
+      container.innerHTML = '<p style="padding: 2rem; text-align: center; color: #718096;">No cleaners match your filters</p>';
+      return;
+    }
     
     if (window.CleanerCard) {
       container.innerHTML = '';
