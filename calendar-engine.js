@@ -6,13 +6,13 @@ class CalendarEngine {
     this.currentWeekStart = Utils.date.getWeekStart(this.currentDate);
     this.currentMonthStart = Utils.date.getMonthStart(this.currentDate);
     this.filters = {
-      regions: new Set(Object.keys(CONFIG.REGIONS)),
+      regions: new Set(), // Start empty, will be populated after data loads
       search: '',
       status: null
     };
     this.selectedCleaner = null;
     this.state = {
-      loading: true,  // FIXED: Changed from false to true
+      loading: true,
       error: null,
       lastUpdate: null
     };
@@ -27,7 +27,7 @@ class CalendarEngine {
       this.handleDataUpdate(data);
     });
 
-    // FIXED: Setup event listeners BEFORE loading data
+    // Setup event listeners BEFORE loading data
     this.setupEventListeners();
 
     // Load initial data
@@ -68,6 +68,13 @@ class CalendarEngine {
   handleDataUpdate(data) {
     this.state.lastUpdate = new Date();
     this.state.error = null;
+    
+    // NEW: Initialize region filters if empty (after regions are discovered)
+    if (this.filters.regions.size === 0) {
+      this.filters.regions = new Set(Object.keys(CONFIG.REGIONS));
+      console.log('🎯 Initialized filters with regions:', Array.from(this.filters.regions));
+    }
+    
     this.render();
   }
 
@@ -122,7 +129,6 @@ class CalendarEngine {
         statusDot.style.background = CONFIG.STATUS.BOOKED.color;
         statusText.textContent = `Error: ${this.state.error}`;
       } else if (this.state.loading) {
-        // FIXED: Added loading state
         statusDot.style.background = '#ECC94B';
         statusText.textContent = 'Syncing...';
       } else if (this.state.lastUpdate) {
@@ -191,7 +197,7 @@ class CalendarEngine {
     this.render();
   }
 
-  // Filter management - FIXED
+  // Filter management
   toggleRegionFilter(region) {
     const allWereSelected = this.filters.regions.size === Object.keys(CONFIG.REGIONS).length;
     
@@ -247,7 +253,7 @@ class CalendarEngine {
     return allJobs.filter(job => job.day === dayName);
   }
 
-  // Main render method - FIXED TO PASS DATA CORRECTLY
+  // Main render method
   render() {
     console.log(`🎨 Rendering ${this.currentView} view...`);
 
@@ -340,7 +346,7 @@ class CalendarEngine {
     }
   }
 
-  // Render filters - FIXED with "All" button
+  // Render filters with "All" button
   renderFilters() {
     const container = document.getElementById('regionFilters');
     if (!container) return;
@@ -373,7 +379,7 @@ class CalendarEngine {
     });
     container.appendChild(allBtn);
 
-    // Add individual region buttons
+    // Add individual region buttons (now dynamically generated)
     Object.entries(CONFIG.REGIONS).forEach(([region, config]) => {
       const btn = document.createElement('button');
       btn.className = 'region-btn';
