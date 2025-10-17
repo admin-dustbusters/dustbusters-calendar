@@ -12,7 +12,7 @@ class CalendarEngine {
     };
     this.selectedCleaner = null;
     this.state = {
-      loading: false,
+      loading: true,  // FIXED: Changed from false to true
       error: null,
       lastUpdate: null
     };
@@ -27,11 +27,11 @@ class CalendarEngine {
       this.handleDataUpdate(data);
     });
 
+    // FIXED: Setup event listeners BEFORE loading data
+    this.setupEventListeners();
+
     // Load initial data
     await this.refreshData();
-
-    // Setup event listeners
-    this.setupEventListeners();
 
     console.log('✅ Calendar Engine initialized');
   }
@@ -121,6 +121,10 @@ class CalendarEngine {
       if (this.state.error) {
         statusDot.style.background = CONFIG.STATUS.BOOKED.color;
         statusText.textContent = `Error: ${this.state.error}`;
+      } else if (this.state.loading) {
+        // FIXED: Added loading state
+        statusDot.style.background = '#ECC94B';
+        statusText.textContent = 'Syncing...';
       } else if (this.state.lastUpdate) {
         statusDot.style.background = CONFIG.STATUS.AVAILABLE.color;
         const time = this.state.lastUpdate.toLocaleTimeString();
@@ -187,13 +191,27 @@ class CalendarEngine {
     this.render();
   }
 
-  // Filter management
+  // Filter management - FIXED
   toggleRegionFilter(region) {
-    if (this.filters.regions.has(region)) {
-      this.filters.regions.delete(region);
+    const allWereSelected = this.filters.regions.size === Object.keys(CONFIG.REGIONS).length;
+    
+    if (allWereSelected) {
+      // If all were selected, select only this one
+      this.filters.regions = new Set([region]);
     } else {
-      this.filters.regions.add(region);
+      // Normal toggle behavior
+      if (this.filters.regions.has(region)) {
+        this.filters.regions.delete(region);
+      } else {
+        this.filters.regions.add(region);
+      }
     }
+
+    // If nothing selected, select all
+    if (this.filters.regions.size === 0) {
+      this.filters.regions = new Set(Object.keys(CONFIG.REGIONS));
+    }
+
     this.render();
   }
 
@@ -229,7 +247,7 @@ class CalendarEngine {
     return allJobs.filter(job => job.day === dayName);
   }
 
-  // Main render method - FIXED TO PASS DATA CORRECTLY
+  // Main render method
   render() {
     console.log(`🎨 Rendering ${this.currentView} view...`);
 
@@ -322,17 +340,58 @@ class CalendarEngine {
     }
   }
 
-  // Render filters
+  // Render filters - FIXED with "All" button
   renderFilters() {
-    if (window.Filters) {
-      Filters.render({
-        regions: CONFIG.REGIONS,
-        activeRegions: this.filters.regions,
-        searchTerm: this.filters.search,
-        onRegionToggle: (region) => this.toggleRegionFilter(region),
-        onSearchChange: (term) => this.setSearchFilter(term)
-      });
+    const container = document.getElementById('regionFilters');
+    if (!container) return;
+
+    container.innerHTML = '';
+    
+    // Add "All" button
+    const allBtn = document.createElement('button');
+    allBtn.className = 'region-btn';
+    allBtn.textContent = '🌍 All';
+    const allAreSelected = this.filters.regions.size === Object.keys(CONFIG.REGIONS).length;
+
+    if (allAreSelected) {
+      allBtn.classList.add('active');
+      allBtn.style.borderColor = '#2d3748';
+      allBtn.style.color = '#2d3748';
+      allBtn.style.background = '#edf2f7';
+    } else {
+      allBtn.style.borderColor = '#a0aec0';
+      allBtn.style.color = '#718096';
     }
+
+    allBtn.addEventListener('click', () => {
+      if (this.filters.regions.size === Object.keys(CONFIG.REGIONS).length) {
+        this.filters.regions.clear();
+      } else {
+        this.filters.regions = new Set(Object.keys(CONFIG.REGIONS));
+      }
+      this.render();
+    });
+    container.appendChild(allBtn);
+
+    // Add individual region buttons
+    Object.entries(CONFIG.REGIONS).forEach(([region, config]) => {
+      const btn = document.createElement('button');
+      btn.className = 'region-btn';
+      btn.style.borderColor = config.color;
+      btn.style.color = config.color;
+      btn.textContent = `${config.emoji || ''} ${config.label}`;
+      
+      if (this.filters.regions.has(region)) {
+        btn.classList.add('active');
+        btn.style.background = config.color + '20';
+      }
+      
+      btn.addEventListener('click', () => {
+        this.toggleRegionFilter(region);
+      });
+      
+      container.appendChild(btn);
+    });
   }
 
   // Render cleaner view
