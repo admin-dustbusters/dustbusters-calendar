@@ -1,7 +1,7 @@
 // Daily View - Single Day Detailed View
 const DailyView = {
   render(data) {
-    const container = document.getElementById('calendarGrid');
+    const container = document.getElementById('calendarGridDaily');
     if (!container) return;
 
     const { cleaners, date } = data;
@@ -108,15 +108,6 @@ const DailyView = {
         this.showJobDetails(slot.dataset);
       });
     });
-
-    // Attach AI suggestion buttons
-    document.querySelectorAll('.ai-suggest-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const cleaner = btn.dataset.cleaner;
-        const period = btn.dataset.period;
-        AIAssistant.showForSlot(dayName, period, cleaner);
-      });
-    });
   },
 
   renderPeriodCell(cleaner, schedule, day, period) {
@@ -141,7 +132,6 @@ const DailyView = {
     });
 
     if (bookings.length > 0) {
-      // Show all bookings for this period
       let html = `<td class="slot booked" data-cleaner="${cleaner.id}" data-day="${day}" data-period="${period}" style="cursor: pointer; min-height: 80px;">`;
       bookings.forEach((b, idx) => {
         html += `
@@ -156,15 +146,9 @@ const DailyView = {
       return html;
     } else if (availableSlots.length > 0) {
       return `
-        <td class="slot available" style="min-height: 80px; position: relative;">
+        <td class="slot available" style="min-height: 80px;">
           <div style="font-weight: 600; margin-bottom: 0.5rem;">✓ Available</div>
           <div style="font-size: 0.75rem; color: #2f855a;">${availableSlots.length} slots open</div>
-          <button class="ai-suggest-btn" 
-                  data-cleaner="${cleaner.region}" 
-                  data-period="${period}"
-                  style="margin-top: 0.5rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; background: #48bb78; color: white; border: none; border-radius: 4px; cursor: pointer;">
-            🤖 AI Suggest
-          </button>
         </td>
       `;
     } else {
@@ -217,9 +201,51 @@ const DailyView = {
   },
 
   showJobDetails(dataset) {
-    // Reuse weekly view's job details modal
-    if (WeeklyView && WeeklyView.showJobDetails) {
-      WeeklyView.showJobDetails(dataset);
-    }
+    const cleaner = dataSync.getCleaner(dataset.cleaner);
+    if (!cleaner) return;
+
+    const weekStr = Utils.date.formatDate(calendarEngine.currentWeekStart);
+    const schedule = cleaner.schedule?.find((s) => s.weekStarting === weekStr);
+    if (!schedule) return;
+
+    const slots = Utils.getTimeSlotsForPeriod(dataset.period);
+    let bookings = [];
+
+    slots.forEach((slot) => {
+      const key = `${dataset.day}_${slot}`;
+      const val = schedule[key];
+      if (val && val.startsWith("BOOKED")) {
+        const b = Utils.parseBooking(val);
+        b.time = slot;
+        bookings.push(b);
+      }
+    });
+
+    let html = `
+      <h2>Job Details</h2>
+      <div style="margin:1rem 0;padding:1rem;background:#f7fafc;border-radius:6px;">
+        <p><strong>Cleaner:</strong> ${cleaner.name}</p>
+        <p><strong>Day:</strong> ${dataset.day}</p>
+        <p><strong>Period:</strong> ${dataset.period}</p>
+      </div>
+      <h3>Bookings:</h3>
+    `;
+
+    bookings.forEach((b) => {
+      html += `
+        <div style="margin:0.5rem 0;padding:1rem;background:white;border:1px solid #e2e8f0;border-radius:6px;">
+          <p><strong>${b.jobNumber}</strong></p>
+          <p>Customer: ${b.customer}</p>
+          ${b.address ? `<p>Address: ${b.address}</p>` : ""}
+          <p style="color:#718096;font-size:0.875rem;">Time: ${b.time}</p>
+        </div>
+      `;
+    });
+
+    document.getElementById("jobDetails").innerHTML = html;
+    document.getElementById("jobModal").classList.add("active");
   }
 };
+
+// CRITICAL: Expose to global scope
+window.DailyView = DailyView;
