@@ -15,7 +15,6 @@ const WeeklyView = {
     let html = '<table class="calendar-table"><thead><tr>';
     html += '<th class="name-col">Cleaner</th>';
 
-    // FIXED: Highlight current day
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -146,3 +145,6 @@ const WeeklyView = {
     document.getElementById("jobModal").classList.add("active");
   },
 };
+
+// CRITICAL: Expose to global scope
+window.WeeklyView = WeeklyView;
