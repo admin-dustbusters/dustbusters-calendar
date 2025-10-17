@@ -15,8 +15,15 @@ const WeeklyView = {
     let html = '<table class="calendar-table"><thead><tr>';
     html += '<th class="name-col">Cleaner</th>';
 
-    CONFIG.DAYS.SHORT.forEach((day) => {
-      html += `<th colspan="3" style="text-align:center;">${day}</th>`;
+    // FIXED: Highlight current day
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    CONFIG.DAYS.SHORT.forEach((day, index) => {
+      const currentDate = Utils.date.addDays(weekStart, index);
+      const isToday = currentDate.getTime() === today.getTime();
+      const style = isToday ? 'style="background-color: #ebf8ff; color: #3182ce; border-left: 1px solid #bee3f8; border-right: 1px solid #bee3f8;"' : '';
+      html += `<th colspan="3" ${style} style="text-align:center;">${day}</th>`;
     });
 
     html += "</tr><tr><th class='name-col'></th>";
