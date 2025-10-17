@@ -1,20 +1,167 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DustBusters Calendar</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id="root"></div>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <h1>🧹 DustBusters Calendar</h1>
+            <div class="header-controls">
+                <div class="week-nav">
+                    <button id="prevWeek" class="btn">← Prev</button>
+                    <span id="weekDisplay" class="week-display"></span>
+                    <button id="nextWeek" class="btn">Next →</button>
+                    <button id="todayBtn" class="btn btn-primary">Today</button>
+                </div>
+                <div class="status">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusText">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </header>
 
-    <script type="module">
-        import App from './src/App.js';
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(React.createElement(App));
+    <!-- Filters -->
+    <div class="filters">
+        <div class="container">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Region:</label>
+                    <div id="regionFilters" class="region-btns"></div>
+                </div>
+                <div class="filter-group">
+                    <input type="text" id="searchInput" placeholder="Search cleaner..." class="search-box">
+                </div>
+                <div class="filter-group">
+                    <label>View:</label>
+                    <select id="viewSelect" class="view-select">
+                        <option value="weekly">Weekly View</option>
+                        <option value="daily">Daily View</option>
+                        <option value="hourly">Hourly View</option>
+                        <option value="monthly">Monthly View</option>
+                        <option value="cleaner">Cleaner View</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+        <div class="container">
+            <div class="stat-box">
+                <div class="stat-label">Cleaners</div>
+                <div class="stat-value" id="statCleaners">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Jobs This Week</div>
+                <div class="stat-value" id="statJobs">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Available Slots</div>
+                <div class="stat-value" id="statAvailable">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Weekly View -->
+            <div id="weeklyView" class="view-container">
+                <div class="calendar-wrapper">
+                    <div id="calendarGrid"></div>
+                </div>
+            </div>
+
+            <!-- Daily View -->
+            <div id="dailyView" class="view-container" style="display: none;">
+                <div class="calendar-wrapper">
+                    <div id="dailyGrid"></div>
+                </div>
+            </div>
+
+            <!-- Hourly View -->
+            <div id="hourlyView" class="view-container" style="display: none;">
+                <div class="calendar-wrapper">
+                    <div id="hourlyGrid"></div>
+                </div>
+            </div>
+
+            <!-- Monthly View -->
+            <div id="monthlyView" class="view-container" style="display: none;">
+                <div class="calendar-wrapper">
+                    <div id="monthlyGrid"></div>
+                </div>
+            </div>
+
+            <!-- Cleaner View -->
+            <div id="cleanerView" class="view-container" style="display: none;">
+                <div id="cleanerCards" class="cleaner-grid"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <p>Loading calendar...</p>
+    </div>
+
+    <!-- Job Details Modal -->
+    <div id="jobModal" class="modal">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <button class="modal-close" id="modalClose">×</button>
+            <div id="jobDetails"></div>
+        </div>
+    </div>
+
+    <!-- Core Scripts (Load in order) -->
+    <script src="config.js"></script>
+    <script src="utils.js"></script>
+    <script src="data-sync.js"></script>
+    <script src="calendar-engine.js"></script>
+    
+    <!-- View Scripts -->
+    <script src="views/weekly-view.js"></script>
+    <script src="views/daily-view.js"></script>
+    <script src="views/hourly-view.js"></script>
+    <script src="views/monthly-view.js"></script>
+    
+    <!-- Component Scripts -->
+    <script src="components/filters.js"></script>
+    <script src="components/cleaner-card.js"></script>
+    <script src="components/booking-panel.js"></script>
+    <script src="components/ai-assistant.js"></script>
+    
+    <!-- Initialize App -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Starting DustBusters Calendar...');
+            
+            // Start data synchronization
+            dataSync.startAutoRefresh();
+            
+            // Initialize calendar engine
+            calendarEngine.initialize();
+            
+            // Setup modal close handlers
+            document.getElementById('modalClose').addEventListener('click', () => {
+                document.getElementById('jobModal').classList.remove('active');
+            });
+            
+            document.querySelector('.modal-backdrop').addEventListener('click', () => {
+                document.getElementById('jobModal').classList.remove('active');
+            });
+            
+            console.log('✅ Calendar initialized successfully!');
+        });
     </script>
 </body>
 </html>
