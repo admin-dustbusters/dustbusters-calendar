@@ -1,5 +1,5 @@
 // DustBusters Calendar Configuration
-const CONFIG = {
+window.CONFIG = {
   // API Configuration
   API: {
     BASE_URL: 'https://dustbusters-n8n.duckdns.org/webhook',
