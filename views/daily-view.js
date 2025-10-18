@@ -54,7 +54,17 @@ const DailyView = {
         container.innerHTML = html;
 
         document.querySelectorAll(".slot.booked").forEach((slot) => {
-          slot.addEventListener("click", () => WeeklyView.showJobDetails(slot.dataset));
+          slot.addEventListener("click", (e) => {
+            e.stopPropagation();
+            WeeklyView.showJobDetails(slot.dataset);
+          });
+        });
+
+        // Add click to switch to hourly view for non-booked cells
+        document.querySelectorAll(".slot:not(.booked)").forEach((slot) => {
+          slot.addEventListener("click", () => {
+            calendarEngine.setView('hourly');
+          });
         });
     }
 };
