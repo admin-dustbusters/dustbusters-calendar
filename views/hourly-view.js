@@ -79,3 +79,15 @@ const HourlyView = {
                     html += '—';
                 }
                 html += '</td>';
+i += colspan;
+            }
+            html += '</tr>';
+        });
+
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+};
+
+window.HourlyView = HourlyView;
