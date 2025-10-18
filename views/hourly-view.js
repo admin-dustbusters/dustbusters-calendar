@@ -18,19 +18,18 @@ const HourlyView = {
         let html = '<table class="hourly-table"><thead><tr class="main-header-row">';
         html += '<th class="name-col">Cleaner</th>';
         CONFIG.TIME_SLOTS.ALL_HOURS.forEach(hour => {
-            html += `<th class="hour-column">${hour}</th>`;
+            html += `<th>${hour}</th>`;
         });
         html += '</tr></thead><tbody>';
 
         cleaners.forEach(cleaner => {
             html += '<tr>';
+            const regionConfig = CONFIG.REGIONS[cleaner.region] || CONFIG.REGIONS['Uncategorized'];
             html += `<td class="name-col">
                 <div class="cleaner-info">
                     <span class="cleaner-name">${cleaner.name}</span>
-                    <span class="cleaner-region" style="background:${
-                        CONFIG.REGIONS[cleaner.region]?.color || "#ccc"
-                    }20;color:${CONFIG.REGIONS[cleaner.region]?.color || "#333"}; border-color:${CONFIG.REGIONS[cleaner.region]?.color || "#ccc"};">
-                        ${CONFIG.REGIONS[cleaner.region]?.emoji || ''} ${CONFIG.REGIONS[cleaner.region]?.label || cleaner.region}
+                    <span class="cleaner-region" style="background:${regionConfig.backgroundColor || regionConfig.color}20;color:${regionConfig.color}; border-color:${regionConfig.color};">
+                        ${regionConfig.emoji || ''} ${regionConfig.label}
                     </span>
                 </div>
             </td>`;
@@ -69,7 +68,7 @@ const HourlyView = {
                 html += `<td class="slot ${slotClass} hour-column" ${colspan > 1 ? `colspan="${colspan}"`: ''}>`;
                 if(isBooked) {
                     const job = Utils.parseBooking(val);
-                   html += `<div class="job-info">
+                    html += `<div class="job-info">
                         <div class="job-number">${job.jobNumber}</div>
                         <div class="job-customer">${job.customer}</div>
                     </div>`;
