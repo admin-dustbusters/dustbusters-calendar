@@ -50,13 +50,11 @@ class CalendarEngine {
     document.getElementById('cleanersModalClose')?.addEventListener('click', () => this.closeCleanersModal());
     document.querySelector('#cleanersModal .modal-backdrop')?.addEventListener('click', () => this.closeCleanersModal());
 
-    // Jobs stat box click handler
     const jobsStatBox = document.querySelectorAll('.stat-box')[1];
     if (jobsStatBox) {
       jobsStatBox.addEventListener('click', () => this.openJobsModal());
     }
 
-    // Available slots stat box click handler
     const availableStatBox = document.querySelectorAll('.stat-box')[2];
     if (availableStatBox) {
       availableStatBox.addEventListener('click', () => this.openAvailableModal());
@@ -81,6 +79,8 @@ class CalendarEngine {
   handleDataUpdate(data) {
     this.state.lastUpdate = new Date();
     this.state.error = null;
+    // Reset filters to include all regions
+    this.filters.regions = new Set(Object.keys(CONFIG.REGIONS));
     this.render();
   }
 
@@ -228,12 +228,11 @@ class CalendarEngine {
     const allBtn = document.createElement('button');
     allBtn.className = 'region-btn';
     allBtn.textContent = '🌍 All';
-    allBtn.style.borderColor = '#a0aec0';
     allBtn.style.color = '#718096';
-    allBtn.style.backgroundColor = '#f8fafc';
     if (activeFilter === 'All') {
         allBtn.classList.add('active');
-    } 
+        allBtn.style.borderColor = '#718096';
+    }
     allBtn.addEventListener('click', () => this.renderCleanersModal('All'));
     container.appendChild(allBtn);
 
@@ -241,13 +240,11 @@ class CalendarEngine {
       const btn = document.createElement('button');
       btn.className = 'region-btn';
       btn.textContent = `${config.emoji || ''} ${config.label}`;
-      btn.style.borderColor = config.color;
       btn.style.color = config.color;
       
       if (activeFilter === region) {
         btn.classList.add('active');
-      } else {
-        btn.style.backgroundColor = config.color + '1A';
+        btn.style.borderColor = config.color;
       }
       
       btn.addEventListener('click', () => this.renderCleanersModal(region));
@@ -257,14 +254,11 @@ class CalendarEngine {
 
   openJobsModal() {
     const modal = document.getElementById('jobModal');
-    const detailsContainer = document.getElementById('jobDetails');
-
     const sortedCleaners = this.getFilteredCleaners();
-    let stats, dateRange, allJobs = [];
+    let dateRange, allJobs = [];
 
     switch(this.currentView) {
         case CONFIG.VIEWS.WEEKLY:
-            stats = dataSync.getWeekStats(this.currentWeekStart, sortedCleaners);
             dateRange = Utils.date.formatWeekRange(this.currentWeekStart);
             for (let i = 0; i < 7; i++) {
                 const date = Utils.date.addDays(this.currentWeekStart, i);
@@ -274,13 +268,11 @@ class CalendarEngine {
             break;
         case CONFIG.VIEWS.DAILY:
         case CONFIG.VIEWS.HOURLY:
-            stats = dataSync.getDayStats(this.currentDay, sortedCleaners);
             dateRange = Utils.date.formatFullDate(this.currentDay);
             const dayStats = dataSync.getDayStatsDetailed(this.currentDay, sortedCleaners);
             allJobs = dayStats.jobs;
             break;
         case CONFIG.VIEWS.MONTHLY:
-            stats = dataSync.getMonthStats(this.currentMonth, sortedCleaners);
             dateRange = Utils.date.formatMonthYear(this.currentMonth);
             const year = this.currentMonth.getFullYear();
             const month = this.currentMonth.getMonth();
@@ -293,7 +285,6 @@ class CalendarEngine {
             break;
     }
 
-    // Remove duplicates
     const uniqueJobs = [];
     const seenJobNumbers = new Set();
     allJobs.forEach(job => {
@@ -321,9 +312,8 @@ class CalendarEngine {
         <div class="region-btns" style="margin-bottom: 1rem;">
     `;
 
-    // Region filters
     const allBtn = `<button class="region-btn ${activeRegion === 'All' ? 'active' : ''}" 
-                     style="border-color: #a0aec0; color: #718096; ${activeRegion === 'All' ? '' : 'background-color: #f8fafc;'}"
+                     style="color: #718096; ${activeRegion === 'All' ? 'border-color: #718096;' : ''}"
                      onclick="calendarEngine.renderJobsModal(${JSON.stringify(jobs).replace(/"/g, '&quot;')}, '${dateRange}', 'All')">
                      🌍 All (${jobs.length})
                    </button>`;
@@ -334,7 +324,7 @@ class CalendarEngine {
       if (count > 0) {
         const isActive = activeRegion === region;
         html += `<button class="region-btn ${isActive ? 'active' : ''}" 
-                  style="border-color: ${config.color}; color: ${config.color}; ${isActive ? '' : `background-color: ${config.color}1A;`}"
+                  style="color: ${config.color}; ${isActive ? `border-color: ${config.color};` : ''}"
                   onclick="calendarEngine.renderJobsModal(${JSON.stringify(jobs).replace(/"/g, '&quot;')}, '${dateRange}', '${region}')">
                   ${config.emoji || ''} ${config.label} (${count})
                 </button>`;
@@ -368,8 +358,6 @@ class CalendarEngine {
 
   openAvailableModal() {
     const modal = document.getElementById('jobModal');
-    const detailsContainer = document.getElementById('jobDetails');
-
     const sortedCleaners = this.getFilteredCleaners();
     let dateRange, allAvailable = [];
 
@@ -428,9 +416,8 @@ class CalendarEngine {
         <div class="region-btns" style="margin-bottom: 1rem;">
     `;
 
-    // Region filters
     const allBtn = `<button class="region-btn ${activeRegion === 'All' ? 'active' : ''}" 
-                     style="border-color: #a0aec0; color: #718096; ${activeRegion === 'All' ? '' : 'background-color: #f8fafc;'}"
+                     style="color: #718096; ${activeRegion === 'All' ? 'border-color: #718096;' : ''}"
                      onclick="calendarEngine.renderAvailableModal(${JSON.stringify(availableCleaners).replace(/"/g, '&quot;')}, '${dateRange}', 'All')">
                      🌍 All (${availableCleaners.length})
                    </button>`;
@@ -441,7 +428,7 @@ class CalendarEngine {
       if (count > 0) {
         const isActive = activeRegion === region;
         html += `<button class="region-btn ${isActive ? 'active' : ''}" 
-                  style="border-color: ${config.color}; color: ${config.color}; ${isActive ? '' : `background-color: ${config.color}1A;`}"
+                  style="color: ${config.color}; ${isActive ? `border-color: ${config.color};` : ''}"
                   onclick="calendarEngine.renderAvailableModal(${JSON.stringify(availableCleaners).replace(/"/g, '&quot;')}, '${dateRange}', '${region}')">
                   ${config.emoji || ''} ${config.label} (${count})
                 </button>`;
@@ -648,14 +635,13 @@ class CalendarEngine {
     const allBtn = document.createElement('button');
     allBtn.className = 'region-btn';
     allBtn.textContent = '🌍 All';
-    allBtn.style.borderColor = '#a0aec0';
     allBtn.style.color = '#718096';
-    allBtn.style.backgroundColor = '#f8fafc';
     const allAreSelected = this.filters.regions.size === Object.keys(CONFIG.REGIONS).length;
 
     if (allAreSelected) {
         allBtn.classList.add('active');
-    } 
+        allBtn.style.borderColor = '#718096';
+    }
 
     allBtn.addEventListener('click', () => this.toggleRegionFilter('All'));
     container.appendChild(allBtn);
@@ -664,13 +650,11 @@ class CalendarEngine {
       const btn = document.createElement('button');
       btn.className = 'region-btn';
       btn.textContent = `${config.emoji || ''} ${config.label}`;
-      btn.style.borderColor = config.color;
       btn.style.color = config.color;
       
       if (this.filters.regions.has(region) && this.filters.regions.size === 1) {
         btn.classList.add('active');
-      } else {
-        btn.style.backgroundColor = config.color + '1A';
+        btn.style.borderColor = config.color;
       }
       
       btn.addEventListener('click', () => {
