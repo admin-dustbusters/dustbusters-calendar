@@ -1,84 +1,77 @@
-// DustBusters Calendar Engine - Core Logic (FIXED)
+// DustBusters Calendar Engine
 class CalendarEngine {
   constructor() {
-    this.currentDate = new Date();
+    this.currentDay = new Date();
     this.currentView = CONFIG.UI.DEFAULT_VIEW;
-    this.currentWeekStart = Utils.date.getWeekStart(this.currentDate);
-    this.currentMonthStart = Utils.date.getMonthStart(this.currentDate);
+    this.currentWeekStart = Utils.date.getWeekStart(this.currentDay);
+    this.currentMonth = new Date(this.currentDay.getFullYear(), this.currentDay.getMonth(), 1);
     this.filters = {
-      regions: new Set(), // Start empty, will be populated after data loads
-      search: '',
-      status: null
+      regions: new Set(Object.keys(CONFIG.REGIONS)),
+      search: ''
     };
-    this.selectedCleaner = null;
     this.state = {
       loading: true,
       error: null,
       lastUpdate: null
     };
+    this.dpCurrentMonth = new Date();
   }
 
-  // Initialize the calendar
   async initialize() {
     console.log('🚀 Initializing Calendar Engine...');
     
-    // Subscribe to data changes
     dataSync.subscribe((data) => {
       this.handleDataUpdate(data);
     });
 
-    // Setup event listeners BEFORE loading data
     this.setupEventListeners();
-
-    // Load initial data
     await this.refreshData();
-
     console.log('✅ Calendar Engine initialized');
   }
 
-  // Setup all event listeners
   setupEventListeners() {
-    // Navigation events
-    document.getElementById('prevWeek')?.addEventListener('click', () => this.navigatePrevious());
-    document.getElementById('nextWeek')?.addEventListener('click', () => this.navigateNext());
-    document.getElementById('todayBtn')?.addEventListener('click', () => this.goToToday());
-
-    // View switching
-    document.getElementById('viewSelect')?.addEventListener('change', (e) => {
-      this.switchView(e.target.value);
+    document.getElementById('navPrev')?.addEventListener('click', () => this.navigatePrevious());
+    document.getElementById('navNext')?.addEventListener('click', () => this.navigateNext());
+    document.getElementById('navToday')?.addEventListener('click', () => this.goToToday());
+    document.getElementById('refreshBtn')?.addEventListener('click', () => this.refreshData());
+    
+    document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => this.setView(e.target.dataset.view));
     });
 
-    // Search with debouncing
     document.getElementById('searchInput')?.addEventListener('input', 
       Utils.debounce((e) => {
         this.filters.search = e.target.value.toLowerCase();
         this.render();
       }, CONFIG.UI.SEARCH_DEBOUNCE)
     );
+    
+    document.getElementById('cleanersStatBox')?.addEventListener('click', () => this.openCleanersModal());
+    document.getElementById('cleanersModalClose')?.addEventListener('click', () => this.closeCleanersModal());
+    document.querySelector('#cleanersModal .modal-backdrop')?.addEventListener('click', () => this.closeCleanersModal());
 
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowLeft' && e.ctrlKey) this.navigatePrevious();
-      if (e.key === 'ArrowRight' && e.ctrlKey) this.navigateNext();
-      if (e.key === 't' && e.ctrlKey) this.goToToday();
+    document.getElementById('mainDateDisplay').addEventListener('click', () => this.openDatePicker());
+    document.querySelector('#datePickerModal .datepicker-backdrop').addEventListener('click', () => this.closeDatePicker());
+    document.getElementById('dpPrevMonth').addEventListener('click', () => {
+        this.dpCurrentMonth = Utils.date.addMonths(this.dpCurrentMonth, -1);
+        this.renderDatePicker();
+    });
+    document.getElementById('dpNextMonth').addEventListener('click', () => {
+        this.dpCurrentMonth = Utils.date.addMonths(this.dpCurrentMonth, 1);
+        this.renderDatePicker();
+    });
+    document.getElementById('dpYear').addEventListener('change', (e) => {
+        this.dpCurrentMonth.setFullYear(parseInt(e.target.value));
+        this.renderDatePicker();
     });
   }
 
-  // Handle data updates
   handleDataUpdate(data) {
     this.state.lastUpdate = new Date();
     this.state.error = null;
-    
-    // NEW: Initialize region filters if empty (after regions are discovered)
-    if (this.filters.regions.size === 0) {
-      this.filters.regions = new Set(Object.keys(CONFIG.REGIONS));
-      console.log('🎯 Initialized filters with regions:', Array.from(this.filters.regions));
-    }
-    
     this.render();
   }
 
-  // Refresh data from source
   async refreshData() {
     this.setState({ loading: true, error: null });
     
@@ -90,36 +83,26 @@ class CalendarEngine {
       }
 
       this.setState({ loading: false });
-      
-      if (result.fromCache) {
-        Utils.toast('Using cached data', 'info', 2000);
-      }
 
     } catch (error) {
       this.setState({ loading: false, error: error.message });
-      Utils.toast('Failed to load data', 'error');
+      console.error('Failed to load data:', error);
     }
   }
 
-  // Set state and trigger updates
   setState(updates) {
     Object.assign(this.state, updates);
     this.updateUI();
   }
 
-  // Update UI based on state
   updateUI() {
-    // Update loading overlay
     const overlay = document.getElementById('loadingOverlay');
     if (overlay) {
       overlay.classList.toggle('hidden', !this.state.loading);
     }
-
-    // Update status indicator
     this.updateStatusIndicator();
   }
 
-  // Update status indicator
   updateStatusIndicator() {
     const statusDot = document.getElementById('statusDot');
     const statusText = document.getElementById('statusText');
@@ -139,257 +122,323 @@ class CalendarEngine {
     }
   }
 
-  // Navigation methods
   navigatePrevious() {
-    switch (this.currentView) {
-      case CONFIG.VIEWS.WEEKLY:
-      case CONFIG.VIEWS.DAILY:
-      case CONFIG.VIEWS.HOURLY:
-        this.currentWeekStart = Utils.date.addDays(this.currentWeekStart, -7);
-        break;
-      case CONFIG.VIEWS.MONTHLY:
-        const newMonth = new Date(this.currentMonthStart);
-        newMonth.setMonth(newMonth.getMonth() - 1);
-        this.currentMonthStart = Utils.date.getMonthStart(newMonth);
-        break;
+    if (this.currentView === CONFIG.VIEWS.WEEKLY) {
+        this.currentDay = Utils.date.addDays(this.currentDay, -7);
+    } else if (this.currentView === CONFIG.VIEWS.DAILY || this.currentView === CONFIG.VIEWS.HOURLY) {
+        this.currentDay = Utils.date.addDays(this.currentDay, -1);
+    } else if (this.currentView === CONFIG.VIEWS.MONTHLY) {
+        this.currentMonth = Utils.date.addMonths(this.currentMonth, -1);
+        this.currentDay = new Date(this.currentMonth);
     }
+    this.currentWeekStart = Utils.date.getWeekStart(this.currentDay);
     this.render();
   }
 
   navigateNext() {
-    switch (this.currentView) {
-      case CONFIG.VIEWS.WEEKLY:
-      case CONFIG.VIEWS.DAILY:
-      case CONFIG.VIEWS.HOURLY:
-        this.currentWeekStart = Utils.date.addDays(this.currentWeekStart, 7);
-        break;
-      case CONFIG.VIEWS.MONTHLY:
-        const newMonth = new Date(this.currentMonthStart);
-        newMonth.setMonth(newMonth.getMonth() + 1);
-        this.currentMonthStart = Utils.date.getMonthStart(newMonth);
-        break;
+    if (this.currentView === CONFIG.VIEWS.WEEKLY) {
+        this.currentDay = Utils.date.addDays(this.currentDay, 7);
+    } else if (this.currentView === CONFIG.VIEWS.HOURLY || this.currentView === CONFIG.VIEWS.DAILY) {
+        this.currentDay = Utils.date.addDays(this.currentDay, 1);
+    } else if (this.currentView === CONFIG.VIEWS.MONTHLY) {
+        this.currentMonth = Utils.date.addMonths(this.currentMonth, 1);
+        this.currentDay = new Date(this.currentMonth);
     }
+    this.currentWeekStart = Utils.date.getWeekStart(this.currentDay);
     this.render();
   }
 
   goToToday() {
-    this.currentDate = new Date();
-    this.currentWeekStart = Utils.date.getWeekStart(this.currentDate);
-    this.currentMonthStart = Utils.date.getMonthStart(this.currentDate);
+    this.currentDay = new Date();
+    this.currentWeekStart = Utils.date.getWeekStart(this.currentDay);
+    this.currentMonth = new Date(this.currentDay.getFullYear(), this.currentDay.getMonth(), 1);
     this.render();
   }
 
-  // View switching
-  switchView(viewName) {
-    this.currentView = viewName;
+  setView(view) {
+    this.currentView = view;
+    document.getElementById('weeklyView').style.display = view === CONFIG.VIEWS.WEEKLY ? '' : 'none';
+    document.getElementById('dailyView').style.display = view === CONFIG.VIEWS.DAILY ? '' : 'none';
+    document.getElementById('hourlyView').style.display = view === CONFIG.VIEWS.HOURLY ? '' : 'none';
+    document.getElementById('monthlyView').style.display = view === CONFIG.VIEWS.MONTHLY ? '' : 'none';
     
-    // Hide all views
-    document.querySelectorAll('.view-container').forEach(view => {
-      view.style.display = 'none';
-    });
-
-    // Show selected view
-    const viewContainer = document.getElementById(`${viewName}View`);
-    if (viewContainer) {
-      viewContainer.style.display = 'block';
-    }
-
-    this.render();
-  }
-
-  // Filter management
-  toggleRegionFilter(region) {
-    const allWereSelected = this.filters.regions.size === Object.keys(CONFIG.REGIONS).length;
-    
-    if (allWereSelected) {
-      // If all were selected, select only this one
-      this.filters.regions = new Set([region]);
+    if (view === 'cleaners') {
+        this.openCleanersModal();
     } else {
-      // Normal toggle behavior
-      if (this.filters.regions.has(region)) {
-        this.filters.regions.delete(region);
-      } else {
-        this.filters.regions.add(region);
+         this.render();
+    }
+  }
+  
+  openCleanersModal() {
+    document.getElementById('cleanersModal').classList.add('active');
+    this.renderCleanersModal();
+  }
+  
+  closeCleanersModal() {
+      document.getElementById('cleanersModal').classList.remove('active');
+  }
+  
+  renderCleanersModal(regionFilter = 'All') {
+      const allCleaners = dataSync.getCleaners({regions: Object.keys(CONFIG.REGIONS)});
+      let filteredCleaners = allCleaners;
+      if (regionFilter !== 'All') {
+          filteredCleaners = allCleaners.filter(c => c.region === regionFilter);
       }
+      
+      const container = document.getElementById("cleanersModalGrid");
+      if(!container) return;
+      
+      if(filteredCleaners.length === 0) {
+             container.innerHTML = `<p style="padding:2rem;text-align:center;">No cleaners match this filter</p>`;
+            return;
+        }
+
+        let html = '';
+        filteredCleaners.forEach(cleaner => {
+            html += `<div class="cleaner-card">
+                <h3>${cleaner.name}</h3>
+                <p><strong>Email:</strong> ${cleaner.email || 'N/A'}</p>
+                <p><strong>Phone:</strong> ${cleaner.phone || 'N/A'}</p>
+                <p><strong>Region:</strong> ${cleaner.region}</p>
+                <p><strong>Rate:</strong> $${cleaner.rate || '25'}/hr</p>
+            </div>`;
+        });
+        container.innerHTML = html;
+        
+        this.renderCleanerModalFilters(regionFilter);
+  }
+  
+  renderCleanerModalFilters(activeFilter) {
+    const container = document.getElementById('cleanerModalRegionFilters');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    const allBtn = document.createElement('button');
+    allBtn.className = 'region-btn';
+    allBtn.textContent = '🌍 All';
+    allBtn.style.borderColor = '#a0aec0';
+    allBtn.style.color = '#718096';
+    allBtn.style.backgroundColor = '#f8fafc';
+    if (activeFilter === 'All') {
+        allBtn.classList.add('active');
+    } 
+    allBtn.addEventListener('click', () => this.renderCleanersModal('All'));
+    container.appendChild(allBtn);
+
+    Object.entries(CONFIG.REGIONS).forEach(([region, config]) => {
+      const btn = document.createElement('button');
+      btn.className = 'region-btn';
+      btn.textContent = `${config.emoji || ''} ${config.label}`;
+      btn.style.borderColor = config.color;
+      btn.style.color = config.color;
+      
+      if (activeFilter === region) {
+        btn.classList.add('active');
+      } else {
+        btn.style.backgroundColor = config.color + '1A';
+      }
+      
+      btn.addEventListener('click', () => this.renderCleanersModal(region));
+      container.appendChild(btn);
+    });
+  }
+  
+  openDatePicker() {
+      this.dpCurrentMonth = new Date(this.currentDay);
+      this.renderDatePicker();
+      document.getElementById('datePickerModal').classList.add('active');
+  }
+  
+  closeDatePicker() {
+      document.getElementById('datePickerModal').classList.remove('active');
+  }
+  
+  renderDatePicker() {
+      const container = document.querySelector('#datePickerModal .datepicker-days');
+      const monthEl = document.getElementById('dpMonth');
+      const yearEl = document.getElementById('dpYear');
+      
+      monthEl.textContent = this.dpCurrentMonth.toLocaleDateString('en-US', { month: 'long' });
+      
+      if (yearEl.options.length === 0) {
+        const currentYear = new Date().getFullYear();
+        for (let y = currentYear - 10; y <= currentYear + 10; y++) {
+            const option = document.createElement('option');
+            option.value = y;
+            option.textContent = y;
+            yearEl.appendChild(option);
+        }
+      }
+      yearEl.value = this.dpCurrentMonth.getFullYear();
+
+      const year = this.dpCurrentMonth.getFullYear();
+      const month = this.dpCurrentMonth.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      
+      let html = '';
+      CONFIG.DAYS.DISPLAY_SHORT_SUNDAY_START.forEach(day => {
+          html += `<div class="datepicker-weekday">${day}</div>`;
+      });
+      
+      let date = new Date(firstDay);
+      let startingDay = firstDay.getDay();
+      date.setDate(date.getDate() - startingDay);
+
+      for (let i = 0; i < 6 * 7; i++) {
+            const classes = ['datepicker-day'];
+            if (date.getMonth() !== month) classes.push('other-month-day');
+            if (date.getTime() === today.getTime()) classes.push('today');
+            if (date.getTime() === this.currentDay.getTime()) classes.push('selected');
+            
+            html += `<div class="${classes.join(' ')}" data-date="${Utils.date.formatDate(date)}">${date.getDate()}</div>`;
+            date.setDate(date.getDate() + 1);
+      }
+      container.innerHTML = html;
+      
+      container.querySelectorAll('.datepicker-day').forEach(dayEl => {
+          dayEl.addEventListener('click', (e) => {
+              const selectedDate = new Date(e.target.dataset.date + 'T00:00:00');
+              this.currentDay = selectedDate;
+              this.currentWeekStart = Utils.date.getWeekStart(selectedDate);
+              this.currentMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+              this.render();
+              this.closeDatePicker();
+          });
+      });
+  }
+
+  toggleRegionFilter(region) {
+    if (region === 'All') {
+        this.filters.regions = new Set(Object.keys(CONFIG.REGIONS));
+    } else {
+        this.filters.regions = new Set([region]);
     }
-
-    // If nothing selected, select all
-    if (this.filters.regions.size === 0) {
-      this.filters.regions = new Set(Object.keys(CONFIG.REGIONS));
-    }
-
     this.render();
   }
 
-  setSearchFilter(searchTerm) {
-    this.filters.search = searchTerm.toLowerCase();
-    this.render();
-  }
-
-  clearFilters() {
-    this.filters = {
-      regions: new Set(Object.keys(CONFIG.REGIONS)),
-      search: '',
-      status: null
-    };
-    this.render();
-  }
-
-  // Get filtered cleaners
   getFilteredCleaners() {
     return dataSync.getCleaners({
       regions: Array.from(this.filters.regions),
-      search: this.filters.search,
-      status: this.filters.status
+      search: this.filters.search
     });
   }
 
-  // Get jobs for a specific day
-  getDayJobs(date) {
-    const weekStart = Utils.date.getWeekStart(date);
-    const allJobs = dataSync.getWeekJobs(weekStart);
-    const dayName = Utils.date.getDayOfWeek(date);
-    
-    return allJobs.filter(job => job.day === dayName);
-  }
-
-  // Main render method
   render() {
     console.log(`🎨 Rendering ${this.currentView} view...`);
 
-    // Update date display
     this.updateDateDisplay();
-
-    // Render filters
     this.renderFilters();
+    
+    document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === this.currentView);
+    });
+    
+    const sortedCleaners = this.getFilteredCleaners().sort((a, b) => {
+        const regionCompare = a.region.localeCompare(b.region);
+        if (regionCompare !== 0) return regionCompare;
 
-    // Render current view with proper data
-    switch (this.currentView) {
-      case CONFIG.VIEWS.HOURLY:
-        if (window.HourlyView) {
-          const hourlyData = {
-            cleaners: this.getFilteredCleaners(),
-            date: this.currentDate
-          };
-          HourlyView.render(hourlyData);
-        }
-        break;
+        const weekStr = Utils.date.formatDate(Utils.date.getWeekStart(this.currentDay));
+        const scheduleA = getScheduleSignatureForSort(a, weekStr);
+        const scheduleB = getScheduleSignatureForSort(b, weekStr);
 
-      case CONFIG.VIEWS.DAILY:
-        if (window.DailyView) {
-          const dailyData = {
-            cleaners: this.getFilteredCleaners(),
-            date: this.currentDate,
-            jobs: this.getDayJobs(this.currentDate)
-          };
-          DailyView.render(dailyData);
-        }
-        break;
+        if (scheduleA && !scheduleB) return -1;
+        if (!scheduleA && scheduleB) return 1;
 
-      case CONFIG.VIEWS.WEEKLY:
-        if (window.WeeklyView) {
-          const weeklyData = {
-            cleaners: this.getFilteredCleaners(),
-            weekStart: this.currentWeekStart,
-            weekEnd: Utils.date.getWeekEnd(this.currentWeekStart),
-            jobs: dataSync.getWeekJobs(this.currentWeekStart)
-          };
-          WeeklyView.render(weeklyData);
-        }
-        break;
+        const scheduleCompare = scheduleA.localeCompare(scheduleB);
+        if (scheduleCompare !== 0) return scheduleCompare;
 
-      case CONFIG.VIEWS.MONTHLY:
-        if (window.MonthlyView) {
-          const monthlyData = {
-            cleaners: this.getFilteredCleaners(),
-            monthStart: this.currentMonthStart,
-            monthEnd: Utils.date.getMonthEnd(this.currentMonthStart)
-          };
-          MonthlyView.render(monthlyData);
-        }
-        break;
+        return a.name.localeCompare(b.name);
+    });
+    
+    const jobsStatLabel = document.getElementById('jobsStatLabel');
+    const availableStatLabel = document.getElementById('availableStatLabel');
+    let stats;
 
-      case CONFIG.VIEWS.CLEANER:
-        if (window.CleanerCard) {
-          this.renderCleanerView();
-        }
-        break;
+    switch(this.currentView) {
+        case CONFIG.VIEWS.WEEKLY:
+            WeeklyView.render({ cleaners: sortedCleaners, weekStart: this.currentWeekStart });
+            stats = dataSync.getWeekStats(this.currentWeekStart, sortedCleaners);
+            jobsStatLabel.textContent = "Jobs This Week";
+            availableStatLabel.textContent = "Available Slots";
+            break;
+        case CONFIG.VIEWS.DAILY:
+             DailyView.render({ cleaners: sortedCleaners, day: this.currentDay });
+            stats = dataSync.getDayStats(this.currentDay, sortedCleaners);
+            jobsStatLabel.textContent = "Jobs Today";
+            availableStatLabel.textContent = "Available Slots Today";
+            break;
+        case CONFIG.VIEWS.HOURLY:
+            HourlyView.render({ cleaners: sortedCleaners, day: this.currentDay });
+            stats = dataSync.getDayStats(this.currentDay, sortedCleaners);
+            jobsStatLabel.textContent = "Jobs Today";
+            availableStatLabel.textContent = "Available Slots Today";
+            break;
+        case CONFIG.VIEWS.MONTHLY:
+            MonthlyView.render({ cleaners: sortedCleaners, month: this.currentMonth });
+            stats = dataSync.getMonthStats(this.currentMonth, sortedCleaners);
+            jobsStatLabel.textContent = "Jobs This Month";
+            availableStatLabel.textContent = "Available Slots This Month";
+            break;
+         case CONFIG.VIEWS.CLEANERS:
+            stats = {totalJobs: '-', totalAvailable: '-'};
+            break;
     }
 
-    // Update stats
-    this.updateStats();
+    document.getElementById('statCleaners').textContent = sortedCleaners.length;
+    document.getElementById('statJobs').textContent = stats.totalJobs;
+    document.getElementById('statAvailable').textContent = stats.totalAvailable;
   }
 
-  // Update date display in header
   updateDateDisplay() {
-    const display = document.getElementById('weekDisplay');
-    if (!display) return;
-
-    switch (this.currentView) {
-      case CONFIG.VIEWS.WEEKLY:
-      case CONFIG.VIEWS.DAILY:
-      case CONFIG.VIEWS.HOURLY:
-        display.textContent = Utils.date.formatWeekRange(this.currentWeekStart);
-        break;
-
-      case CONFIG.VIEWS.MONTHLY:
-        const monthYear = this.currentMonthStart.toLocaleDateString('en-US', {
-          month: 'long',
-          year: 'numeric'
-        });
-        display.textContent = monthYear;
-        break;
-
-      case CONFIG.VIEWS.CLEANER:
-        display.textContent = Utils.date.formatWeekRange(this.currentWeekStart);
-        break;
+    const display = document.getElementById('mainDateDisplay');
+    switch(this.currentView){
+        case CONFIG.VIEWS.WEEKLY:
+            display.textContent = Utils.date.formatWeekRange(this.currentWeekStart);
+            break;
+        case CONFIG.VIEWS.DAILY:
+        case CONFIG.VIEWS.HOURLY:
+            display.textContent = Utils.date.formatFullDate(this.currentDay);
+            break;
+        case CONFIG.VIEWS.MONTHLY:
+            display.textContent = Utils.date.formatMonthYear(this.currentMonth);
+            break;
     }
   }
 
-  // Render filters with "All" button
   renderFilters() {
     const container = document.getElementById('regionFilters');
     if (!container) return;
 
     container.innerHTML = '';
     
-    // Add "All" button
     const allBtn = document.createElement('button');
     allBtn.className = 'region-btn';
     allBtn.textContent = '🌍 All';
+    allBtn.style.borderColor = '#a0aec0';
+    allBtn.style.color = '#718096';
+    allBtn.style.backgroundColor = '#f8fafc';
     const allAreSelected = this.filters.regions.size === Object.keys(CONFIG.REGIONS).length;
 
     if (allAreSelected) {
-      allBtn.classList.add('active');
-      allBtn.style.borderColor = '#2d3748';
-      allBtn.style.color = '#2d3748';
-      allBtn.style.background = '#edf2f7';
-    } else {
-      allBtn.style.borderColor = '#a0aec0';
-      allBtn.style.color = '#718096';
-    }
+        allBtn.classList.add('active');
+    } 
 
-    allBtn.addEventListener('click', () => {
-      if (this.filters.regions.size === Object.keys(CONFIG.REGIONS).length) {
-        this.filters.regions.clear();
-      } else {
-        this.filters.regions = new Set(Object.keys(CONFIG.REGIONS));
-      }
-      this.render();
-    });
+    allBtn.addEventListener('click', () => this.toggleRegionFilter('All'));
     container.appendChild(allBtn);
 
-    // Add individual region buttons (now dynamically generated)
     Object.entries(CONFIG.REGIONS).forEach(([region, config]) => {
       const btn = document.createElement('button');
       btn.className = 'region-btn';
+      btn.textContent = `${config.emoji || ''} ${config.label}`;
       btn.style.borderColor = config.color;
       btn.style.color = config.color;
-      btn.textContent = `${config.emoji || ''} ${config.label}`;
       
-      if (this.filters.regions.has(region)) {
+      if (this.filters.regions.has(region) && this.filters.regions.size === 1) {
         btn.classList.add('active');
-        btn.style.background = config.color + '20';
+      } else {
+        btn.style.backgroundColor = config.color + '1A';
       }
       
       btn.addEventListener('click', () => {
@@ -399,60 +448,6 @@ class CalendarEngine {
       container.appendChild(btn);
     });
   }
-
-  // Render cleaner view
-  renderCleanerView() {
-    const container = document.getElementById('cleanerCards');
-    if (!container) return;
-
-    const cleaners = this.getFilteredCleaners();
-    
-    if (cleaners.length === 0) {
-      container.innerHTML = '<p style="padding: 2rem; text-align: center; color: #718096;">No cleaners match your filters</p>';
-      return;
-    }
-    
-    if (window.CleanerCard) {
-      container.innerHTML = '';
-      cleaners.forEach(cleaner => {
-        const schedule = dataSync.getSchedule(cleaner.id, this.currentWeekStart);
-        const card = CleanerCard.create(cleaner, schedule, this.currentWeekStart);
-        container.appendChild(card);
-      });
-    }
-  }
-
-  // Update statistics
-  updateStats() {
-    const stats = dataSync.getWeekStats(this.currentWeekStart);
-    const cleaners = this.getFilteredCleaners();
-
-    const elements = {
-      cleaners: document.getElementById('statCleaners'),
-      jobs: document.getElementById('statJobs'),
-      available: document.getElementById('statAvailable')
-    };
-
-    if (elements.cleaners) elements.cleaners.textContent = cleaners.length;
-    if (elements.jobs) elements.jobs.textContent = stats.totalJobs;
-    if (elements.available) elements.available.textContent = stats.totalAvailable;
-  }
-
-  // Export current view (future feature)
-  async exportView(format = 'pdf') {
-    Utils.toast('Export feature coming soon!', 'info');
-  }
-
-  // Print current view
-  printView() {
-    window.print();
-  }
 }
 
-// Create global instance
 const calendarEngine = new CalendarEngine();
-
-// Export for modules
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = calendarEngine;
-}
