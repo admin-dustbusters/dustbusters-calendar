@@ -12,8 +12,8 @@ body {
 
 /* Header */
 .header {
-  background: #34495E; /* Navy Blue */
-  border-bottom: 2px solid #2C3E50; /* Darker Navy */
+  background: #34495E;
+  border-bottom: 2px solid #2C3E50;
   padding: 1rem 0;
   position: sticky;
   top: 0;
@@ -43,7 +43,7 @@ body {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: #E0E6ED; /* Light gray for status text */
+  color: #E0E6ED;
 }
 
 .status-dot {
@@ -103,13 +103,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.stat-box#cleanersStatBox {
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-.stat-box#cleanersStatBox:hover {
+.stat-box:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
@@ -145,12 +143,14 @@ body {
     padding: 1rem;
     background-color: white;
     border-bottom: 1px solid #e2e8f0;
+    flex-wrap: wrap;
 }
 
 .filter-group {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .filter-group label {
@@ -213,12 +213,15 @@ body {
     align-items: center;
     padding: 1rem;
     background-color: #f8fafc;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
 
 .date-navigation {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .nav-arrow {
@@ -227,7 +230,7 @@ body {
     justify-content: center;
     width: 40px;
     height: 40px;
-    background-color: #2c3e50; /* Navy Blue */
+    background-color: #2c3e50;
     color: white;
     border: none;
     border-radius: 8px;
@@ -235,7 +238,7 @@ body {
     transition: background-color 0.2s;
 }
 .nav-arrow:hover {
-    background-color: #1a2b3c; /* Darker Navy on hover */
+    background-color: #1a2b3c;
 }
 .nav-arrow svg {
     width: 20px;
@@ -290,7 +293,7 @@ body {
 }
 
 .view-btn.active {
-    background-color: #2c3e50; /* Navy Blue */
+    background-color: #2c3e50;
     color: white;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
@@ -323,34 +326,31 @@ body {
   border-bottom: 2px solid #e2e8f0;
 }
 
-/* Navy Blue Header */
 .calendar-table tr.main-header-row th, .hourly-table tr.main-header-row th, .monthly-table tr.main-header-row th {
-    background-color: #2c3e50; /* Navy Blue */
+    background-color: #2c3e50;
     color: white;
     border-bottom: 1px solid #4a6075;
     text-align: center; 
 }
 
 .calendar-table tr.main-header-row th.name-col, .hourly-table tr.main-header-row th.name-col {
-    background-color: #2c3e50; /* Navy Blue */
+    background-color: #2c3e50;
     text-align: left; 
-    border-right: 2px solid white; /* White divider for cleaner header */
+    border-right: 2px solid white;
     vertical-align: middle;
 }
 
-/* Lighter Sub-header and Day Dividers */
 .calendar-table tr.sub-header-row th {
     background-color: #34495e; 
     font-weight: 500;
     color: #f0f3f5; 
-    border-bottom: 2px solid #2c3e50; /* Bold navy divider */
+    border-bottom: 2px solid #2c3e50;
 }
 
 .calendar-table tr.sub-header-row .period-divider {
-    border-right: 1px solid #4a6075; /* Lighter divider for periods */
+    border-right: 1px solid #4a6075;
 }
 
-/* Hourly View Dividers */
 .hourly-table th {
   border-right: 1px solid #a0aec0;
 }
@@ -376,7 +376,6 @@ body {
     border-right: 1px solid #e2e8f0;
 }
 
-/* Style for 'Today' column highlight */
 .today-header-main {
     background-color: #fed68a !important;
     color: #78350f !important;
@@ -398,6 +397,8 @@ body {
 
 .calendar-table th.name-col, .hourly-table th.name-col, .monthly-table th.name-col {
   min-width: 150px;
+  max-width: 150px;
+  width: 150px;
   position: sticky;
   left: 0;
   z-index: 10;
@@ -428,6 +429,9 @@ body {
   vertical-align: middle; 
   text-align: left; 
   padding-left: 1rem;
+  min-width: 150px;
+  max-width: 150px;
+  width: 150px;
 }
 
 .calendar-table td.name-col::after, .hourly-table td.name-col::after {
@@ -437,8 +441,21 @@ body {
   right: 0;
   bottom: -1px;
   width: 3px;
-  background-color: #2c3e50; /* Navy Blue */
+  background-color: #2c3e50;
   z-index: 12;
+}
+
+/* Column hover effect */
+.calendar-table .day-column-group,
+.hourly-table .hour-column {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.calendar-table .day-column-group:hover,
+.hourly-table .hour-column:hover {
+  background-color: rgba(66, 153, 225, 0.05);
+  transform: scale(1.02);
 }
 
 /* Monthly View Styles */
@@ -501,7 +518,7 @@ body {
 .cleaner-region {
   font-size: 0.75rem;
   padding: 0.2rem 0.5rem;
-  border-radius: 4px;
+  border-radius: 9999px;
   display: inline-block;
   width: fit-content;
   border: 1px solid;
@@ -746,14 +763,111 @@ body {
 }
 
 /* Responsive Design */
+@media (max-width: 1024px) {
+    .calendar-table, .hourly-table {
+        min-width: 800px;
+    }
+    
+    .calendar-table th.name-col, .hourly-table th.name-col,
+    .calendar-table td.name-col, .hourly-table td.name-col {
+        min-width: 120px;
+        max-width: 120px;
+        width: 120px;
+    }
+}
+
 @media (max-width: 768px) {
     .header h1 { font-size: 1.25rem; }
     .header-right { gap: 1rem; }
-    .stats .container { grid-template-columns: 1fr; }
-    .filter-controls { flex-direction: column; align-items: stretch; }
-    .calendar-controls { flex-direction: column; gap: 1rem; }
-    .date-navigation { width: 100%; justify-content: center; }
-    .view-switcher { width: 100%; }
-    .view-btn { flex: 1; }
-    .cleaner-card { min-width: 250px; }
+    
+    .stats .container { 
+        grid-template-columns: 1fr; 
+    }
+    
+    .filter-controls { 
+        flex-direction: column; 
+        align-items: stretch; 
+    }
+    
+    .filter-group {
+        width: 100%;
+    }
+    
+    .search-box {
+        min-width: 100%;
+    }
+    
+    .calendar-controls { 
+        flex-direction: column; 
+        gap: 1rem; 
+    }
+    
+    .date-navigation { 
+        width: 100%; 
+        justify-content: center; 
+    }
+    
+    .date-display-main {
+        min-width: auto;
+        flex: 1;
+    }
+    
+    .view-switcher { 
+        width: 100%; 
+    }
+    
+    .view-btn { 
+        flex: 1;
+        padding: 0.5rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    
+    .cleaner-card { 
+        min-width: 250px; 
+    }
+    
+    .modal-content {
+        width: 95%;
+        padding: 1.5rem;
+    }
+    
+    .stat-value {
+        font-size: 1.75rem;
+    }
+    
+    .calendar-table th.name-col, .hourly-table th.name-col,
+    .calendar-table td.name-col, .hourly-table td.name-col {
+        min-width: 100px;
+        max-width: 100px;
+        width: 100px;
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .header h1 {
+        font-size: 1rem;
+    }
+    
+    .status {
+        font-size: 0.75rem;
+    }
+    
+    .stat-label {
+        font-size: 0.65rem;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+    }
+    
+    .view-btn {
+        font-size: 0.7rem;
+        padding: 0.4rem 0.4rem;
+    }
+    
+    .region-btn {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.75rem;
+    }
 }
