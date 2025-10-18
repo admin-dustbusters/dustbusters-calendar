@@ -4,19 +4,7 @@ class DataSync {
     this.data = null;
     this.lastFetch = null;
     this.listeners = new Set();
-    this.refreshTimer = null;
-    this.isOnline = navigator.onLine;
-    
-    window.addEventListener('online', () => {
-      this.isOnline = true;
-      Utils.toast('Connection restored', 'success');
-      this.fetch();
-    });
-
-    window.addEventListener('offline', () => {
-      this.isOnline = false;
-      Utils.toast('Using cached data', 'info');
-    });
+    this.dayStatsCache = new Map();
   }
 
   subscribe(callback) {
@@ -25,6 +13,7 @@ class DataSync {
   }
 
   notify(data) {
+    this.dayStatsCache.clear();
     this.listeners.forEach(cb => {
       try { cb(data); }
       catch (e) { console.error('Listener error:', e); }
@@ -49,51 +38,14 @@ class DataSync {
         throw new Error('Invalid data format');
       }
       
-      // NEW: Auto-discover regions from data
-      CONFIG.discoverRegions(data.cleaners);
-      
       this.data = data;
       this.lastFetch = new Date();
-      
-      if (CONFIG.CACHE.ENABLED) {
-        Utils.storage.set(CONFIG.CACHE.KEY, data, CONFIG.CACHE.EXPIRY);
-      }
-      
       this.notify(data);
       return { success: true, data };
       
     } catch (error) {
       console.error('Fetch error:', error);
-      
-      if (CONFIG.CACHE.ENABLED) {
-        const cachedData = Utils.storage.get(CONFIG.CACHE.KEY);
-        if (cachedData) {
-          // NEW: Also discover regions from cached data
-          CONFIG.discoverRegions(cachedData.cleaners);
-          
-          this.data = cachedData;
-          this.notify(cachedData);
-          return { success: true, data: cachedData, fromCache: true };
-        }
-      }
-      
       return { success: false, error: error.message };
-    }
-  }
-
-  startAutoRefresh() {
-    if (this.refreshTimer) clearInterval(this.refreshTimer);
-    
-    this.fetch();
-    this.refreshTimer = setInterval(() => {
-      if (this.isOnline) this.fetch();
-    }, CONFIG.API.REFRESH_INTERVAL);
-  }
-
-  stopAutoRefresh() {
-    if (this.refreshTimer) {
-      clearInterval(this.refreshTimer);
-      this.refreshTimer = null;
     }
   }
 
@@ -119,14 +71,6 @@ class DataSync {
       );
     }
     
-    if (filters.status) {
-      cleaners = cleaners.filter(c => c.status === filters.status);
-    }
-    
-    if (filters.sortBy) {
-      cleaners = Utils.array.sortBy(cleaners, filters.sortBy, filters.sortOrder || 'asc');
-    }
-    
     return cleaners;
   }
 
@@ -135,76 +79,78 @@ class DataSync {
     return this.data.cleaners.find(c => c.id === cleanerId);
   }
 
-  getSchedule(cleanerId, weekStart) {
-    const cleaner = this.getCleaner(cleanerId);
-    if (!cleaner || !cleaner.schedule) return null;
-    
-    const weekString = Utils.date.formatDate(weekStart);
-    return cleaner.schedule.find(s => s.weekStarting === weekString);
-  }
-
-  getWeekJobs(weekStart) {
-    const weekString = Utils.date.formatDate(weekStart);
-    const jobs = [];
-    
-    if (!this.data || !this.data.cleaners) return jobs;
-    
-    this.data.cleaners.forEach(cleaner => {
-      const schedule = cleaner.schedule?.find(s => s.weekStarting === weekString);
-      
-      if (schedule) {
-        Object.entries(schedule).forEach(([key, value]) => {
-          if (key !== 'weekStarting' && typeof value === 'string' && value.startsWith('BOOKED')) {
-            const booking = Utils.parseBooking(value);
-            if (booking) {
-              const [day, time] = key.split('_');
-              jobs.push({
-                ...booking,
-                cleaner: cleaner.name,
-                cleanerId: cleaner.id,
-                day,
-                time,
-                weekStart: weekString
-              });
-            }
-          }
-        });
-      }
-    });
-    
-    return jobs;
-  }
-
-  getWeekStats(weekStart) {
-    const weekString = Utils.date.formatDate(weekStart);
-    let totalJobs = 0;
+  getWeekStats(weekStart, filteredCleaners) {
+    const uniqueJobNumbers = new Set();
     let totalAvailable = 0;
-    let totalUnavailable = 0;
     
-    if (!this.data || !this.data.cleaners) {
-      return { totalJobs, totalAvailable, totalUnavailable };
+    if (!filteredCleaners || filteredCleaners.length === 0) {
+      return { totalJobs: 0, totalAvailable: 0 };
+    }
+
+    for (let i = 0; i < 7; i++) {
+        const date = Utils.date.addDays(weekStart, i);
+        const dayStats = this.getDayStats(date, filteredCleaners, true);
+        dayStats.jobIds.forEach(id => uniqueJobNumbers.add(id));
+        totalAvailable += dayStats.available;
     }
     
-    this.data.cleaners.forEach(cleaner => {
-      const schedule = cleaner.schedule?.find(s => s.weekStarting === weekString);
-      
-      if (schedule) {
-        Object.values(schedule).forEach(value => {
-          if (typeof value === 'string') {
-            if (value.startsWith('BOOKED')) totalJobs++;
-            else if (value === 'AVAILABLE') totalAvailable++;
-            else if (value === 'UNAVAILABLE') totalUnavailable++;
-          }
-        });
-      }
-    });
-    
-    return { totalJobs, totalAvailable, totalUnavailable };
+    return { totalJobs: uniqueJobNumbers.size, totalAvailable };
   }
 
-  async refresh() {
-    return await this.fetch();
+  getDayStats(date, filteredCleaners, useCache = false) {
+    const dateStr = Utils.date.formatDate(date);
+    const cacheKey = `${dateStr}-${filteredCleaners.map(c => c.id).join(',')}`;
+    if (useCache && this.dayStatsCache.has(cacheKey)) {
+        return this.dayStatsCache.get(cacheKey);
+    }
+
+    const weekStart = Utils.date.getWeekStart(date);
+    const weekStr = Utils.date.formatDate(weekStart);
+    const dayShort = Utils.date.getDataDayKey(date);
+    const jobIds = new Set();
+    let availableSlots = 0;
+
+    filteredCleaners.forEach(cleaner => {
+        const schedule = cleaner.schedule?.find(s => s.weekStarting === weekStr);
+        if (schedule) {
+            CONFIG.TIME_SLOTS.ALL_HOURS.forEach(hour => {
+                const key = `${dayShort}_${hour}`;
+                const val = schedule[key];
+                if (val === 'AVAILABLE') availableSlots++;
+                else if (val && val.startsWith('BOOKED')){
+                     const job = Utils.parseBooking(val);
+                     if(job && job.jobNumber) {
+                        jobIds.add(job.jobNumber);
+                     }
+                }
+            });
+        }
+    });
+
+    const stats = { booked: jobIds.size, available: availableSlots, jobIds };
+    if (useCache) {
+        this.dayStatsCache.set(cacheKey, stats);
+    }
+    return stats;
   }
+
+   getMonthStats(monthDate, filteredCleaners) {
+    const year = monthDate.getFullYear();
+    const month = monthDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    
+    const uniqueJobNumbers = new Set();
+    let totalAvailable = 0;
+
+    for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
+        const dayStats = this.getDayStats(new Date(d), filteredCleaners, true);
+        dayStats.jobIds.forEach(id => uniqueJobNumbers.add(id));
+        totalAvailable += dayStats.available;
+    }
+
+    return { totalJobs: uniqueJobNumbers.size, totalAvailable };
+}
 }
 
 const dataSync = new DataSync();
