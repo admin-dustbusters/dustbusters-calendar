@@ -76,7 +76,7 @@ const WeeklyView = {
       const todayClass = isToday ? 'today-header-main' : '';
       const dateString = Utils.date.formatDayMonth(currentDate);
       const dateStr = Utils.date.formatDate(currentDate);
-      html += `<th colspan="3" class="day-divider ${todayClass} day-column-header" data-date="${dateStr}" onclick="WeeklyView.onColumnClick('${dateStr}')">${day} - ${dateString}</th>`;
+      html += `<th colspan="3" class="day-divider ${todayClass} day-column-header" data-date="${dateStr}">${day} - ${dateString}</th>`;
     });
 
     html += `</tr><tr class="sub-header-row">`;
@@ -86,7 +86,7 @@ const WeeklyView = {
         const isToday = currentDate.getTime() === today.getTime();
         const todayClass = isToday ? 'today-header-sub' : '';
         const dateStr = Utils.date.formatDate(currentDate);
-        html += `<th class="${todayClass} period-divider day-column-header" data-date="${dateStr}" onclick="WeeklyView.onColumnClick('${dateStr}')">Morning</th><th class="${todayClass} period-divider day-column-header" data-date="${dateStr}" onclick="WeeklyView.onColumnClick('${dateStr}')">Afternoon</th><th class="day-divider ${todayClass} day-column-header" data-date="${dateStr}" onclick="WeeklyView.onColumnClick('${dateStr}')">Evening</th>`;
+        html += `<th class="${todayClass} period-divider day-column-header" data-date="${dateStr}">Morning</th><th class="${todayClass} period-divider day-column-header" data-date="${dateStr}">Afternoon</th><th class="day-divider ${todayClass} day-column-header" data-date="${dateStr}">Evening</th>`;
     });
 
     html += "</tr></thead><tbody>";
@@ -149,6 +149,9 @@ const WeeklyView = {
     html += "</tbody></table>";
     container.innerHTML = html;
 
+    // Setup column hover effects
+    this.setupColumnHoverEffects();
+
     document.querySelectorAll(".slot.booked").forEach((slot) => {
       slot.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -160,6 +163,58 @@ const WeeklyView = {
       cell.addEventListener("click", (e) => {
         if (cell.dataset.date) {
           this.onColumnClick(cell.dataset.date);
+        }
+      });
+    });
+  },
+
+  setupColumnHoverEffects() {
+    const allHeaders = document.querySelectorAll('.day-column-header');
+    const allCells = document.querySelectorAll('.day-column-cell');
+
+    allHeaders.forEach(header => {
+      header.addEventListener('mouseenter', function() {
+        const date = this.dataset.date;
+        if (date) {
+          document.querySelectorAll(`[data-date="${date}"]`).forEach(el => {
+            el.classList.add('hovered');
+          });
+        }
+      });
+
+      header.addEventListener('mouseleave', function() {
+        const date = this.dataset.date;
+        if (date) {
+          document.querySelectorAll(`[data-date="${date}"]`).forEach(el => {
+            el.classList.remove('hovered');
+          });
+        }
+      });
+
+      header.addEventListener('click', function() {
+        const date = this.dataset.date;
+        if (date) {
+          WeeklyView.onColumnClick(date);
+        }
+      });
+    });
+
+    allCells.forEach(cell => {
+      cell.addEventListener('mouseenter', function() {
+        const date = this.dataset.date;
+        if (date) {
+          document.querySelectorAll(`[data-date="${date}"]`).forEach(el => {
+            el.classList.add('hovered');
+          });
+        }
+      });
+
+      cell.addEventListener('mouseleave', function() {
+        const date = this.dataset.date;
+        if (date) {
+          document.querySelectorAll(`[data-date="${date}"]`).forEach(el => {
+            el.classList.remove('hovered');
+          });
         }
       });
     });
@@ -244,7 +299,7 @@ const WeeklyView = {
         <p><strong>Day:</strong> ${day}</p>
         <p><strong>Time:</strong> ${timeRange} (${hours} hours)</p>
         <p><strong>Hourly Rate:</strong> $${hourlyRate}/hr</p>
-        <p style="font-size:1.1rem;margin-top:0.5rem;"><strong>Estimated Pay:</strong> <span style="color:#2f855a;font-weight:700;">$${estimatedPay}</span></p>
+        <p style="font-size:1.1rem;margin-top:0.5rem;"><strong>Estimated Pay:</strong> <span style="color:#2f855a;font-weight:700;">$${estimatedPay.toFixed(2)}</span></p>
       </div>
     `;
 
