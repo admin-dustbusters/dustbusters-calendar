@@ -26,13 +26,12 @@ const DailyView = {
 
         cleaners.forEach((cleaner) => {
           html += "<tr>";
+          const regionConfig = CONFIG.REGIONS[cleaner.region] || CONFIG.REGIONS['Uncategorized'];
           html += `<td class="name-col">
             <div class="cleaner-info">
               <span class="cleaner-name">${cleaner.name}</span>
-              <span class="cleaner-region" style="background:${
-                CONFIG.REGIONS[cleaner.region]?.color || "#ccc"
-              }20;color:${CONFIG.REGIONS[cleaner.region]?.color || "#333"}; border-color:${CONFIG.REGIONS[cleaner.region]?.color || "#ccc"};">
-                ${CONFIG.REGIONS[cleaner.region]?.emoji || ''} ${CONFIG.REGIONS[cleaner.region]?.label || cleaner.region}
+              <span class="cleaner-region" style="background:${regionConfig.backgroundColor || regionConfig.color}20;color:${regionConfig.color}; border-color:${regionConfig.color};">
+                ${regionConfig.emoji || ''} ${regionConfig.label}
               </span>
             </div>
           </td>`;
@@ -60,7 +59,6 @@ const DailyView = {
           });
         });
 
-        // Add click to switch to hourly view for non-booked cells
         document.querySelectorAll(".slot:not(.booked)").forEach((slot) => {
           slot.addEventListener("click", () => {
             calendarEngine.setView('hourly');
