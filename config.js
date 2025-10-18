@@ -1,4 +1,62 @@
 // DustBusters Calendar Configuration
+
+// Function to generate distinct colors for regions
+function generateRegionColor(index) {
+  const colors = [
+    '#3B82F6', // Blue
+    '#8B5CF6', // Purple
+    '#EC4899', // Pink
+    '#10B981', // Green
+    '#F59E0B', // Amber
+    '#EF4444', // Red
+    '#06B6D4', // Cyan
+    '#6366F1', // Indigo
+    '#84CC16', // Lime
+    '#F97316', // Orange
+    '#14B8A6', // Teal
+    '#A855F7', // Violet
+    '#22C55E', // Green
+    '#FB923C', // Orange
+    '#0EA5E9', // Sky
+    '#D946EF', // Fuchsia
+    '#64748B', // Slate
+    '#78716C', // Stone
+    '#DC2626', // Red
+    '#16A34A'  // Green
+  ];
+  return colors[index % colors.length];
+}
+
+// Function to get emoji for region
+function getRegionEmoji(index) {
+  const emojis = ['🔵', '🟣', '🟡', '🟢', '🟠', '🔴', '🟤', '⚫', '⚪', '🟥', '🟦', '🟩', '🟨', '🟪', '🟫', '⬛', '⬜', '🔶', '🔷', '🔸'];
+  return emojis[index % emojis.length];
+}
+
+// Auto-generate region configs from data
+function initializeRegions(cleaners) {
+  const regions = {};
+  const uniqueRegions = [...new Set(cleaners.map(c => c.region))].filter(r => r && r !== '');
+  
+  uniqueRegions.forEach((region, index) => {
+    regions[region] = {
+      color: generateRegionColor(index),
+      label: region,
+      emoji: getRegionEmoji(index)
+    };
+  });
+  
+  // Always include Uncategorized and Unassigned
+  if (!regions['Uncategorized']) {
+    regions['Uncategorized'] = { color: '#A0AEC0', label: 'Other', emoji: '📍' };
+  }
+  if (!regions['Unassigned']) {
+    regions['Unassigned'] = { color: '#F56565', label: 'Unassigned', emoji: '❓' };
+  }
+  
+  return regions;
+}
+
 const CONFIG = {
   API: {
     BASE_URL: 'https://dustbusters-n8n.duckdns.org/webhook',
@@ -9,11 +67,7 @@ const CONFIG = {
     TIMEOUT: 10000
   },
   REGIONS: {
-    'Charlotte': { color: '#F59E0B', label: 'Charlotte', emoji: '🟡' },
-    'Triad': { color: '#805AD5', label: 'Triad', emoji: '🟣' },
-    'Raleigh': { color: '#9C4221', label: 'Raleigh', emoji: '🟤' },
-    'Uncategorized': { color: '#A0AEC0', label: 'Other', emoji: '📍' },
-    'Unassigned': { color: '#F56565', label: 'Unassigned', emoji: '❓' }
+    // Will be populated dynamically
   },
   STATUS: {
     AVAILABLE: { color: '#48BB78', bg: '#F0FFF4', label: 'Available' },
@@ -47,4 +101,9 @@ const CONFIG = {
   CACHE: {
     ENABLED: false
   }
+};
+
+// Initialize regions when data is loaded
+window.initializeRegionsFromData = function(cleaners) {
+  CONFIG.REGIONS = initializeRegions(cleaners);
 };
