@@ -35,23 +35,78 @@ function getRegionEmoji(index) {
 
 // Auto-generate region configs from data
 function initializeRegions(cleaners) {
+  // First, load any saved settings from localStorage
+  const saved = localStorage.getItem('dustbustersRegionSettings');
+  let savedSettings = {};
+  
+  if (saved) {
+    try {
+      savedSettings = JSON.parse(saved);
+    } catch (e) {
+      console.error('Failed to load saved region settings:', e);
+    }
+  }
+
   const regions = {};
   const uniqueRegions = [...new Set(cleaners.map(c => c.region))].filter(r => r && r !== '');
   
   uniqueRegions.forEach((region, index) => {
-    regions[region] = {
-      color: generateRegionColor(index),
-      label: region,
-      emoji: getRegionEmoji(index)
-    };
+    // Check if we have saved settings for this region
+    if (savedSettings[region]) {
+      // Use saved settings
+      regions[region] = {
+        color: savedSettings[region].color,
+        backgroundColor: savedSettings[region].backgroundColor,
+        emoji: savedSettings[region].emoji,
+        label: region
+      };
+    } else {
+      // Generate new settings for new regions
+      const generatedColor = generateRegionColor(index);
+      regions[region] = {
+        color: generatedColor,
+        backgroundColor: generatedColor,
+        label: region,
+        emoji: getRegionEmoji(index)
+      };
+    }
   });
   
   // Always include Uncategorized and Unassigned
   if (!regions['Uncategorized']) {
-    regions['Uncategorized'] = { color: '#A0AEC0', label: 'Other', emoji: '📍' };
+    if (savedSettings['Uncategorized']) {
+      regions['Uncategorized'] = {
+        color: savedSettings['Uncategorized'].color,
+        backgroundColor: savedSettings['Uncategorized'].backgroundColor,
+        emoji: savedSettings['Uncategorized'].emoji,
+        label: 'Other'
+      };
+    } else {
+      regions['Uncategorized'] = { 
+        color: '#A0AEC0', 
+        backgroundColor: '#A0AEC0',
+        label: 'Other', 
+        emoji: '📍' 
+      };
+    }
   }
+  
   if (!regions['Unassigned']) {
-    regions['Unassigned'] = { color: '#F56565', label: 'Unassigned', emoji: '❓' };
+    if (savedSettings['Unassigned']) {
+      regions['Unassigned'] = {
+        color: savedSettings['Unassigned'].color,
+        backgroundColor: savedSettings['Unassigned'].backgroundColor,
+        emoji: savedSettings['Unassigned'].emoji,
+        label: 'Unassigned'
+      };
+    } else {
+      regions['Unassigned'] = { 
+        color: '#F56565', 
+        backgroundColor: '#F56565',
+        label: 'Unassigned', 
+        emoji: '❓' 
+      };
+    }
   }
   
   return regions;
