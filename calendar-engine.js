@@ -50,6 +50,18 @@ class CalendarEngine {
     document.getElementById('cleanersModalClose')?.addEventListener('click', () => this.closeCleanersModal());
     document.querySelector('#cleanersModal .modal-backdrop')?.addEventListener('click', () => this.closeCleanersModal());
 
+    // Jobs stat box click handler
+    const jobsStatBox = document.querySelectorAll('.stat-box')[1];
+    if (jobsStatBox) {
+      jobsStatBox.addEventListener('click', () => this.openJobsModal());
+    }
+
+    // Available slots stat box click handler
+    const availableStatBox = document.querySelectorAll('.stat-box')[2];
+    if (availableStatBox) {
+      availableStatBox.addEventListener('click', () => this.openAvailableModal());
+    }
+
     document.getElementById('mainDateDisplay').addEventListener('click', () => this.openDatePicker());
     document.querySelector('#datePickerModal .datepicker-backdrop').addEventListener('click', () => this.closeDatePicker());
     document.getElementById('dpPrevMonth').addEventListener('click', () => {
@@ -242,6 +254,223 @@ class CalendarEngine {
       container.appendChild(btn);
     });
   }
+
+  openJobsModal() {
+    const modal = document.getElementById('jobModal');
+    const detailsContainer = document.getElementById('jobDetails');
+
+    const sortedCleaners = this.getFilteredCleaners();
+    let stats, dateRange, allJobs = [];
+
+    switch(this.currentView) {
+        case CONFIG.VIEWS.WEEKLY:
+            stats = dataSync.getWeekStats(this.currentWeekStart, sortedCleaners);
+            dateRange = Utils.date.formatWeekRange(this.currentWeekStart);
+            for (let i = 0; i < 7; i++) {
+                const date = Utils.date.addDays(this.currentWeekStart, i);
+                const dayStats = dataSync.getDayStatsDetailed(date, sortedCleaners);
+                allJobs.push(...dayStats.jobs);
+            }
+            break;
+        case CONFIG.VIEWS.DAILY:
+        case CONFIG.VIEWS.HOURLY:
+            stats = dataSync.getDayStats(this.currentDay, sortedCleaners);
+            dateRange = Utils.date.formatFullDate(this.currentDay);
+            const dayStats = dataSync.getDayStatsDetailed(this.currentDay, sortedCleaners);
+            allJobs = dayStats.jobs;
+            break;
+        case CONFIG.VIEWS.MONTHLY:
+            stats = dataSync.getMonthStats(this.currentMonth, sortedCleaners);
+            dateRange = Utils.date.formatMonthYear(this.currentMonth);
+            const year = this.currentMonth.getFullYear();
+            const month = this.currentMonth.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
+                const mStats = dataSync.getDayStatsDetailed(new Date(d), sortedCleaners);
+                allJobs.push(...mStats.jobs);
+            }
+            break;
+    }
+
+    // Remove duplicates
+    const uniqueJobs = [];
+    const seenJobNumbers = new Set();
+    allJobs.forEach(job => {
+        if (!seenJobNumbers.has(job.jobNumber)) {
+            seenJobNumbers.add(job.jobNumber);
+            uniqueJobs.push(job);
+        }
+    });
+
+    this.renderJobsModal(uniqueJobs, dateRange);
+    modal.classList.add('active');
+  }
+
+  renderJobsModal(jobs, dateRange, activeRegion = 'All') {
+    const detailsContainer = document.getElementById('jobDetails');
+    
+    let filteredJobs = jobs;
+    if (activeRegion !== 'All') {
+        filteredJobs = jobs.filter(j => j.region === activeRegion);
+    }
+
+    let html = `
+      <h2>Jobs - ${dateRange}</h2>
+      <div style="margin: 1rem 0;">
+        <div class="region-btns" style="margin-bottom: 1rem;">
+    `;
+
+    // Region filters
+    const allBtn = `<button class="region-btn ${activeRegion === 'All' ? 'active' : ''}" 
+                     style="border-color: #a0aec0; color: #718096; ${activeRegion === 'All' ? '' : 'background-color: #f8fafc;'}"
+                     onclick="calendarEngine.renderJobsModal(${JSON.stringify(jobs).replace(/"/g, '&quot;')}, '${dateRange}', 'All')">
+                     🌍 All (${jobs.length})
+                   </button>`;
+    html += allBtn;
+
+    Object.entries(CONFIG.REGIONS).forEach(([region, config]) => {
+      const count = jobs.filter(j => j.region === region).length;
+      if (count > 0) {
+        const isActive = activeRegion === region;
+        html += `<button class="region-btn ${isActive ? 'active' : ''}" 
+                  style="border-color: ${config.color}; color: ${config.color}; ${isActive ? '' : `background-color: ${config.color}1A;`}"
+                  onclick="calendarEngine.renderJobsModal(${JSON.stringify(jobs).replace(/"/g, '&quot;')}, '${dateRange}', '${region}')">
+                  ${config.emoji || ''} ${config.label} (${count})
+                </button>`;
+      }
+    });
+
+    html += `</div>`;
+
+    if (filteredJobs.length === 0) {
+        html += `<p style="padding: 2rem; text-align: center; color: #718096;">No jobs found</p>`;
+    } else {
+        html += `<div style="max-height: 60vh; overflow-y: auto;">`;
+        filteredJobs.forEach(job => {
+            const regionConfig = CONFIG.REGIONS[job.region] || CONFIG.REGIONS['Uncategorized'];
+            html += `
+              <div style="padding: 1rem; margin-bottom: 0.75rem; background: #fff5f5; border-left: 3px solid #f56565; border-radius: 6px;">
+                <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem;">${job.jobNumber}</div>
+                <p><strong>Customer:</strong> ${job.customer}</p>
+                <p><strong>Cleaner:</strong> ${job.cleaner}</p>
+                <p><strong>Region:</strong> <span style="color: ${regionConfig.color};">${regionConfig.emoji || ''} ${regionConfig.label}</span></p>
+                <p><strong>Hours:</strong> ${job.hours.join(', ')}</p>
+              </div>
+            `;
+        });
+        html += `</div>`;
+    }
+
+    html += `</div>`;
+    detailsContainer.innerHTML = html;
+  }
+
+  openAvailableModal() {
+    const modal = document.getElementById('jobModal');
+    const detailsContainer = document.getElementById('jobDetails');
+
+    const sortedCleaners = this.getFilteredCleaners();
+    let dateRange, allAvailable = [];
+
+    switch(this.currentView) {
+        case CONFIG.VIEWS.WEEKLY:
+            dateRange = Utils.date.formatWeekRange(this.currentWeekStart);
+            for (let i = 0; i < 7; i++) {
+                const date = Utils.date.addDays(this.currentWeekStart, i);
+                const dayStats = dataSync.getDayStatsDetailed(date, sortedCleaners);
+                dayStats.availableCleaners.forEach(ac => {
+                    ac.date = Utils.date.formatDate(date);
+                });
+                allAvailable.push(...dayStats.availableCleaners);
+            }
+            break;
+        case CONFIG.VIEWS.DAILY:
+        case CONFIG.VIEWS.HOURLY:
+            dateRange = Utils.date.formatFullDate(this.currentDay);
+            const dayStats = dataSync.getDayStatsDetailed(this.currentDay, sortedCleaners);
+            dayStats.availableCleaners.forEach(ac => {
+                ac.date = Utils.date.formatDate(this.currentDay);
+            });
+            allAvailable = dayStats.availableCleaners;
+            break;
+        case CONFIG.VIEWS.MONTHLY:
+            dateRange = Utils.date.formatMonthYear(this.currentMonth);
+            const year = this.currentMonth.getFullYear();
+            const month = this.currentMonth.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
+                const mStats = dataSync.getDayStatsDetailed(new Date(d), sortedCleaners);
+                mStats.availableCleaners.forEach(ac => {
+                    ac.date = Utils.date.formatDate(d);
+                });
+                allAvailable.push(...mStats.availableCleaners);
+            }
+            break;
+    }
+
+    this.renderAvailableModal(allAvailable, dateRange);
+    modal.classList.add('active');
+  }
+
+  renderAvailableModal(availableCleaners, dateRange, activeRegion = 'All') {
+    const detailsContainer = document.getElementById('jobDetails');
+    
+    let filtered = availableCleaners;
+    if (activeRegion !== 'All') {
+        filtered = availableCleaners.filter(ac => ac.region === activeRegion);
+    }
+
+    let html = `
+      <h2>Available Cleaners - ${dateRange}</h2>
+      <div style="margin: 1rem 0;">
+        <div class="region-btns" style="margin-bottom: 1rem;">
+    `;
+
+    // Region filters
+    const allBtn = `<button class="region-btn ${activeRegion === 'All' ? 'active' : ''}" 
+                     style="border-color: #a0aec0; color: #718096; ${activeRegion === 'All' ? '' : 'background-color: #f8fafc;'}"
+                     onclick="calendarEngine.renderAvailableModal(${JSON.stringify(availableCleaners).replace(/"/g, '&quot;')}, '${dateRange}', 'All')">
+                     🌍 All (${availableCleaners.length})
+                   </button>`;
+    html += allBtn;
+
+    Object.entries(CONFIG.REGIONS).forEach(([region, config]) => {
+      const count = availableCleaners.filter(ac => ac.region === region).length;
+      if (count > 0) {
+        const isActive = activeRegion === region;
+        html += `<button class="region-btn ${isActive ? 'active' : ''}" 
+                  style="border-color: ${config.color}; color: ${config.color}; ${isActive ? '' : `background-color: ${config.color}1A;`}"
+                  onclick="calendarEngine.renderAvailableModal(${JSON.stringify(availableCleaners).replace(/"/g, '&quot;')}, '${dateRange}', '${region}')">
+                  ${config.emoji || ''} ${config.label} (${count})
+                </button>`;
+      }
+    });
+
+    html += `</div>`;
+
+    if (filtered.length === 0) {
+        html += `<p style="padding: 2rem; text-align: center; color: #718096;">No available cleaners found</p>`;
+    } else {
+        html += `<div style="max-height: 60vh; overflow-y: auto;">`;
+        filtered.forEach(ac => {
+            const regionConfig = CONFIG.REGIONS[ac.region] || CONFIG.REGIONS['Uncategorized'];
+            html += `
+              <div style="padding: 1rem; margin-bottom: 0.75rem; background: #f0fff4; border-left: 3px solid #48bb78; border-radius: 6px;">
+                <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem;">${ac.cleaner}</div>
+                ${ac.date ? `<p><strong>Date:</strong> ${ac.date}</p>` : ''}
+                <p><strong>Region:</strong> <span style="color: ${regionConfig.color};">${regionConfig.emoji || ''} ${regionConfig.label}</span></p>
+                <p><strong>Available Slots:</strong> ${ac.slots.join(', ')}</p>
+              </div>
+            `;
+        });
+        html += `</div>`;
+    }
+
+    html += `</div>`;
+    detailsContainer.innerHTML = html;
+  }
   
   openDatePicker() {
       this.dpCurrentMonth = new Date(this.currentDay);
@@ -290,7 +519,10 @@ class CalendarEngine {
             const classes = ['datepicker-day'];
             if (date.getMonth() !== month) classes.push('other-month-day');
             if (date.getTime() === today.getTime()) classes.push('today');
-            if (date.getTime() === this.currentDay.getTime()) classes.push('selected');
+            
+            const currentDayTime = new Date(this.currentDay);
+            currentDayTime.setHours(0,0,0,0);
+            if (date.getTime() === currentDayTime.getTime()) classes.push('selected');
             
             html += `<div class="${classes.join(' ')}" data-date="${Utils.date.formatDate(date)}">${date.getDate()}</div>`;
             date.setDate(date.getDate() + 1);
