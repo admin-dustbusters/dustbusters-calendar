@@ -95,13 +95,12 @@ const WeeklyView = {
 
     cleaners.forEach((cleaner) => {
       html += "<tr>";
+      const regionConfig = CONFIG.REGIONS[cleaner.region] || CONFIG.REGIONS['Uncategorized'];
       html += `<td class="name-col">
         <div class="cleaner-info">
           <span class="cleaner-name">${cleaner.name}</span>
-          <span class="cleaner-region" style="background:${
-            CONFIG.REGIONS[cleaner.region]?.color || "#ccc"
-          }20;color:${CONFIG.REGIONS[cleaner.region]?.color || "#333"}; border-color:${CONFIG.REGIONS[cleaner.region]?.color || "#ccc"};">
-            ${CONFIG.REGIONS[cleaner.region]?.emoji || ''} ${CONFIG.REGIONS[cleaner.region]?.label || cleaner.region}
+          <span class="cleaner-region" style="background:${regionConfig.backgroundColor || regionConfig.color}20;color:${regionConfig.color}; border-color:${regionConfig.color};">
+            ${regionConfig.emoji || ''} ${regionConfig.label}
           </span>
         </div>
       </td>`;
@@ -149,7 +148,6 @@ const WeeklyView = {
     html += "</tbody></table>";
     container.innerHTML = html;
 
-    // Setup column hover effects
     this.setupColumnHoverEffects();
 
     document.querySelectorAll(".slot.booked").forEach((slot) => {
@@ -284,6 +282,8 @@ const WeeklyView = {
       }
     }
 
+    const regionConfig = CONFIG.REGIONS[cleaner.region] || CONFIG.REGIONS['Uncategorized'];
+
     let html = `
       <h2>Job Details</h2>
       <div style="margin:1rem 0;padding:1rem;background:#fff5f5;border-left:3px solid #f56565;border-radius:6px;">
@@ -295,7 +295,7 @@ const WeeklyView = {
       <div style="margin:1rem 0;padding:1rem;background:#f7fafc;border-radius:6px;">
         <h3 style="margin-bottom:0.75rem;">Cleaner Details</h3>
         <p><strong>Name:</strong> ${cleaner.name}</p>
-        <p><strong>Region:</strong> ${CONFIG.REGIONS[cleaner.region]?.emoji || ''} ${CONFIG.REGIONS[cleaner.region]?.label || cleaner.region}</p>
+        <p><strong>Region:</strong> <span style="background: ${regionConfig.backgroundColor || regionConfig.color}20; color: ${regionConfig.color}; padding: 0.2rem 0.5rem; border-radius: 9999px; border: 1px solid ${regionConfig.color};">${regionConfig.emoji || ''} ${regionConfig.label}</span></p>
         <p><strong>Day:</strong> ${day}</p>
         <p><strong>Time:</strong> ${timeRange} (${hours} hours)</p>
         <p><strong>Hourly Rate:</strong> $${hourlyRate}/hr</p>
@@ -311,7 +311,7 @@ const WeeklyView = {
       html += `
         <div style="margin:1rem 0;padding:1rem;background:#f0fff4;border-left:3px solid #48bb78;border-radius:6px;">
           <h3 style="margin-bottom:0.75rem;color:#2f855a;">💡 Better Option Available</h3>
-          <p><strong>${suggestedCleaner.name}</strong> is available in ${CONFIG.REGIONS[cleaner.region]?.label}</p>
+          <p><strong>${suggestedCleaner.name}</strong> is available in ${regionConfig.label}</p>
           <p><strong>Rate:</strong> $${suggestedRate}/hr (Save $${savings.toFixed(2)})</p>
           <p><strong>Estimated Pay:</strong> $${suggestedPay.toFixed(2)}</p>
         </div>
