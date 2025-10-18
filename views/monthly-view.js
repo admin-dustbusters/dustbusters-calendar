@@ -36,14 +36,15 @@ const MonthlyView = {
                 if (!isCurrentMonth) classes.push('other-month');
                 if (isToday) classes.push('month-today');
 
-                html += `<td class="${classes.join(' ')}" data-date="${Utils.date.formatDate(date)}">`;
+                const dateStr = Utils.date.formatDate(date);
+                html += `<td class="${classes.join(' ')}" data-date="${dateStr}" onclick="MonthlyView.onDayClick('${dateStr}')">`;
                 html += `<div class="day-number">${date.getDate()}</div>`;
 
                 if(isCurrentMonth) {
-                    const stats = dataSync.getDayStats(date, cleaners);
+                    const stats = dataSync.getDayStatsDetailed(date, cleaners);
                     html += `<div class="day-stats">
-                        <div class="available-stat">✓ ${stats.available} Cleaners Available</div>
-                        <div class="booked-stat">🔴 ${stats.booked} Jobs</div>
+                        <div class="available-stat">✓ ${stats.cleanersAvailable} Cleaner${stats.cleanersAvailable !== 1 ? 's' : ''}</div>
+                        <div class="booked-stat">🔴 ${stats.jobCount} Job${stats.jobCount !== 1 ? 's' : ''}</div>
                     </div>`;
                 }
                 html += '</td>';
@@ -55,6 +56,13 @@ const MonthlyView = {
 
         html += '</tbody></table>';
         container.innerHTML = html;
+    },
+
+    onDayClick(dateStr) {
+        const date = new Date(dateStr + 'T00:00:00');
+        calendarEngine.currentDay = date;
+        calendarEngine.currentWeekStart = Utils.date.getWeekStart(date);
+        calendarEngine.setView('hourly');
     }
 };
 
