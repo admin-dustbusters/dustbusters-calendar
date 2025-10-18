@@ -134,7 +134,7 @@ class DataSync {
     return stats;
   }
 
-   getMonthStats(monthDate, filteredCleaners) {
+  getMonthStats(monthDate, filteredCleaners) {
     const year = monthDate.getFullYear();
     const month = monthDate.getMonth();
     const firstDay = new Date(year, month, 1);
@@ -150,7 +150,89 @@ class DataSync {
     }
 
     return { totalJobs: uniqueJobNumbers.size, totalAvailable };
-}
+  }
+
+  // Get detailed stats for a specific day
+  getDayStatsDetailed(date, filteredCleaners) {
+    const dateStr = Utils.date.formatDate(date);
+    const weekStart = Utils.date.getWeekStart(date);
+    const weekStr = Utils.date.formatDate(weekStart);
+    const dayShort = Utils.date.getDataDayKey(date);
+    
+    const cleanersWithAvailability = [];
+    const jobs = [];
+
+    filteredCleaners.forEach(cleaner => {
+        const schedule = cleaner.schedule?.find(s => s.weekStarting === weekStr);
+        if (schedule) {
+            let cleanerAvailableSlots = [];
+            let cleanerJobs = [];
+            
+            CONFIG.TIME_SLOTS.ALL_HOURS.forEach(hour => {
+                const key = `${dayShort}_${hour}`;
+                const val = schedule[key];
+                if (val === 'AVAILABLE') {
+                    cleanerAvailableSlots.push(hour);
+                } else if (val && val.startsWith('BOOKED')){
+                    const job = Utils.parseBooking(val);
+                    if(job && job.jobNumber) {
+                        const existingJob = cleanerJobs.find(j => j.jobNumber === job.jobNumber);
+                        if (!existingJob) {
+                            cleanerJobs.push({
+                                ...job,
+                                cleaner: cleaner.name,
+                                cleanerId: cleaner.id,
+                                region: cleaner.region,
+                                hours: [hour]
+                            });
+                        } else {
+                            existingJob.hours.push(hour);
+                        }
+                    }
+                }
+            });
+
+            // Only count cleaner as available if they have 3+ consecutive slots
+            if (cleanerAvailableSlots.length >= 3) {
+                const hasConsecutive = this.hasConsecutiveSlots(cleanerAvailableSlots, 3);
+                if (hasConsecutive) {
+                    cleanersWithAvailability.push({
+                        cleaner: cleaner.name,
+                        cleanerId: cleaner.id,
+                        region: cleaner.region,
+                        slots: cleanerAvailableSlots
+                    });
+                }
+            }
+
+            jobs.push(...cleanerJobs);
+        }
+    });
+
+    return {
+        cleanersAvailable: cleanersWithAvailability.length,
+        availableCleaners: cleanersWithAvailability,
+        jobs: jobs,
+        jobCount: new Set(jobs.map(j => j.jobNumber)).size
+    };
+  }
+
+  hasConsecutiveSlots(slots, minConsecutive) {
+    if (slots.length < minConsecutive) return false;
+    
+    const slotIndices = slots.map(slot => CONFIG.TIME_SLOTS.ALL_HOURS.indexOf(slot)).sort((a, b) => a - b);
+    
+    let consecutiveCount = 1;
+    for (let i = 1; i < slotIndices.length; i++) {
+        if (slotIndices[i] === slotIndices[i-1] + 1) {
+            consecutiveCount++;
+            if (consecutiveCount >= minConsecutive) return true;
+        } else {
+            consecutiveCount = 1;
+        }
+    }
+    return false;
+  }
 }
 
 const dataSync = new DataSync();
