@@ -280,14 +280,31 @@ class CalendarEngine {
             <div style="font-weight: 600; margin-bottom: 0.25rem;">${config.emoji || ''} ${config.label}</div>
             <div style="font-size: 0.875rem; color: #718096;">Region: ${region}</div>
           </div>
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <label style="font-size: 0.875rem; font-weight: 500;">Color:</label>
-            <input type="color" 
-                   value="${config.color}" 
-                   onchange="calendarEngine.updateRegionColor('${region}', this.value)"
-                   style="width: 50px; height: 40px; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer;">
-            <div style="padding: 0.5rem 1rem; background: ${config.color}20; color: ${config.color}; border: 1px solid ${config.color}; border-radius: 9999px; font-size: 0.875rem; font-weight: 500;">
-              Preview
+          <div style="display: flex; flex-direction: column; gap: 0.75rem; min-width: 300px;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <label style="font-size: 0.875rem; font-weight: 500; min-width: 100px;">Background:</label>
+              <input type="color" 
+                     value="${config.backgroundColor || config.color}" 
+                     onchange="calendarEngine.updateRegionBackgroundColor('${region}', this.value)"
+                     style="width: 50px; height: 40px; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <label style="font-size: 0.875rem; font-weight: 500; min-width: 100px;">Text Color:</label>
+              <input type="color" 
+                     value="${config.color}" 
+                     onchange="calendarEngine.updateRegionColor('${region}', this.value)"
+                     style="width: 50px; height: 40px; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <label style="font-size: 0.875rem; font-weight: 500; min-width: 100px;">Emoji:</label>
+              <input type="text" 
+                     value="${config.emoji || ''}" 
+                     onchange="calendarEngine.updateRegionEmoji('${region}', this.value)"
+                     maxlength="2"
+                     style="width: 60px; height: 40px; border: 2px solid #e2e8f0; border-radius: 8px; padding: 0.5rem; font-size: 1.2rem; text-align: center;">
+            </div>
+            <div style="padding: 0.5rem 1rem; background: ${config.backgroundColor || config.color}20; color: ${config.color}; border: 1px solid ${config.color}; border-radius: 9999px; font-size: 0.875rem; font-weight: 500; text-align: center;">
+              ${config.emoji || ''} Preview
             </div>
           </div>
         </div>
@@ -307,26 +324,50 @@ class CalendarEngine {
     }
   }
 
+  updateRegionBackgroundColor(region, newColor) {
+    if (CONFIG.REGIONS[region]) {
+      CONFIG.REGIONS[region].backgroundColor = newColor;
+      this.saveRegionColors();
+      this.renderRegionSettings();
+      this.render();
+    }
+  }
+
+  updateRegionEmoji(region, newEmoji) {
+    if (CONFIG.REGIONS[region]) {
+      CONFIG.REGIONS[region].emoji = newEmoji;
+      this.saveRegionColors();
+      this.renderRegionSettings();
+      this.render();
+    }
+  }
+
   saveRegionColors() {
-    const colors = {};
+    const settings = {};
     Object.entries(CONFIG.REGIONS).forEach(([region, config]) => {
-      colors[region] = config.color;
+      settings[region] = {
+        color: config.color,
+        backgroundColor: config.backgroundColor,
+        emoji: config.emoji
+      };
     });
-    localStorage.setItem('dustbustersRegionColors', JSON.stringify(colors));
+    localStorage.setItem('dustbustersRegionSettings', JSON.stringify(settings));
   }
 
   loadRegionColors() {
-    const saved = localStorage.getItem('dustbustersRegionColors');
+    const saved = localStorage.getItem('dustbustersRegionSettings');
     if (saved) {
       try {
-        const colors = JSON.parse(saved);
-        Object.entries(colors).forEach(([region, color]) => {
+        const settings = JSON.parse(saved);
+        Object.entries(settings).forEach(([region, config]) => {
           if (CONFIG.REGIONS[region]) {
-            CONFIG.REGIONS[region].color = color;
+            CONFIG.REGIONS[region].color = config.color;
+            CONFIG.REGIONS[region].backgroundColor = config.backgroundColor;
+            CONFIG.REGIONS[region].emoji = config.emoji;
           }
         });
       } catch (e) {
-        console.error('Failed to load region colors:', e);
+        console.error('Failed to load region settings:', e);
       }
     }
   }
@@ -423,7 +464,7 @@ class CalendarEngine {
                 <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem;">${job.jobNumber}</div>
                 <p><strong>Customer:</strong> ${job.customer}</p>
                 <p><strong>Cleaner:</strong> ${job.cleaner}</p>
-                <p><strong>Region:</strong> <span style="color: ${regionConfig.color};">${regionConfig.emoji || ''} ${regionConfig.label}</span></p>
+                <p><strong>Region:</strong> <span style="background: ${regionConfig.backgroundColor || regionConfig.color}20; color: ${regionConfig.color}; padding: 0.2rem 0.5rem; border-radius: 9999px; border: 1px solid ${regionConfig.color};">${regionConfig.emoji || ''} ${regionConfig.label}</span></p>
                 <p><strong>Hours:</strong> ${job.hours.join(', ')}</p>
               </div>
             `;
@@ -526,7 +567,7 @@ class CalendarEngine {
               <div style="padding: 1rem; margin-bottom: 0.75rem; background: #f0fff4; border-left: 3px solid #48bb78; border-radius: 6px;">
                 <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem;">${ac.cleaner}</div>
                 ${ac.date ? `<p><strong>Date:</strong> ${ac.date}</p>` : ''}
-                <p><strong>Region:</strong> <span style="color: ${regionConfig.color};">${regionConfig.emoji || ''} ${regionConfig.label}</span></p>
+                <p><strong>Region:</strong> <span style="background: ${regionConfig.backgroundColor || regionConfig.color}20; color: ${regionConfig.color}; padding: 0.2rem 0.5rem; border-radius: 9999px; border: 1px solid ${regionConfig.color};">${regionConfig.emoji || ''} ${regionConfig.label}</span></p>
                 <p><strong>Available Slots:</strong> ${ac.slots.join(', ')}</p>
               </div>
             `;
