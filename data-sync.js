@@ -38,6 +38,11 @@ class DataSync {
         throw new Error('Invalid data format');
       }
       
+      // Initialize regions from data
+      if (typeof window.initializeRegionsFromData === 'function') {
+        window.initializeRegionsFromData(data.cleaners);
+      }
+      
       this.data = data;
       this.lastFetch = new Date();
       this.notify(data);
@@ -152,7 +157,6 @@ class DataSync {
     return { totalJobs: uniqueJobNumbers.size, totalAvailable };
   }
 
-  // Get detailed stats for a specific day
   getDayStatsDetailed(date, filteredCleaners) {
     const dateStr = Utils.date.formatDate(date);
     const weekStart = Utils.date.getWeekStart(date);
@@ -192,7 +196,6 @@ class DataSync {
                 }
             });
 
-            // Only count cleaner as available if they have 3+ consecutive slots
             if (cleanerAvailableSlots.length >= 3) {
                 const hasConsecutive = this.hasConsecutiveSlots(cleanerAvailableSlots, 3);
                 if (hasConsecutive) {
