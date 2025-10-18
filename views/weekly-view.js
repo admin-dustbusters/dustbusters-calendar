@@ -149,9 +149,6 @@ const WeeklyView = {
     html += "</tbody></table>";
     container.innerHTML = html;
 
-    // Add column hover effects
-    this.setupColumnHoverEffects();
-
     document.querySelectorAll(".slot.booked").forEach((slot) => {
       slot.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -159,39 +156,10 @@ const WeeklyView = {
       });
     });
 
-    document.querySelectorAll(".day-column-cell").forEach((cell) => {
-      if (!cell.classList.contains('booked')) {
-        cell.addEventListener("click", (e) => {
-          if (cell.dataset.date) {
-            this.onColumnClick(cell.dataset.date);
-          }
-        });
-      }
-    });
-  },
-
-  setupColumnHoverEffects() {
-    const table = document.querySelector('.calendar-table');
-    if (!table) return;
-
-    document.querySelectorAll('.day-column-header, .day-column-cell').forEach(el => {
-      el.addEventListener('mouseenter', function() {
-        const date = this.dataset.date;
-        if (date) {
-          document.querySelectorAll(`[data-date="${date}"]`).forEach(cell => {
-            cell.style.backgroundColor = 'rgba(66, 153, 225, 0.08)';
-            cell.style.transform = 'scale(1.01)';
-          });
-        }
-      });
-
-      el.addEventListener('mouseleave', function() {
-        const date = this.dataset.date;
-        if (date) {
-          document.querySelectorAll(`[data-date="${date}"]`).forEach(cell => {
-            cell.style.backgroundColor = '';
-            cell.style.transform = '';
-          });
+    document.querySelectorAll(".day-column-cell:not(.booked)").forEach((cell) => {
+      cell.addEventListener("click", (e) => {
+        if (cell.dataset.date) {
+          this.onColumnClick(cell.dataset.date);
         }
       });
     });
@@ -238,10 +206,9 @@ const WeeklyView = {
     else if (isAfternoonMatch) { timeRange = '12pm - 5pm'; hours = 5; }
     else if (isEveningMatch) { timeRange = '5pm - 9pm'; hours = 4; }
 
-    const hourlyRate = cleaner.rate || 25;
+    const hourlyRate = parseFloat(cleaner.rate) || 25;
     const estimatedPay = hours * hourlyRate;
 
-    // Find alternative cleaners in same region
     const regionCleaners = dataSync.getCleaners({ regions: [cleaner.region] });
     let suggestedCleaner = null;
     
@@ -254,7 +221,8 @@ const WeeklyView = {
         const altEvening = this.getPeriodStatus(altCleaner, altSchedule, day, 'Evening');
         
         const hasAvailability = altMorning.status === 'available' || altAfternoon.status === 'available' || altEvening.status === 'available';
-        if (hasAvailability && (altCleaner.rate || 25) < hourlyRate) {
+        const altRate = parseFloat(altCleaner.rate) || 25;
+        if (hasAvailability && altRate < hourlyRate) {
           suggestedCleaner = altCleaner;
           break;
         }
@@ -281,7 +249,7 @@ const WeeklyView = {
     `;
 
     if (suggestedCleaner) {
-      const suggestedRate = suggestedCleaner.rate || 25;
+      const suggestedRate = parseFloat(suggestedCleaner.rate) || 25;
       const suggestedPay = hours * suggestedRate;
       const savings = estimatedPay - suggestedPay;
       
@@ -289,8 +257,8 @@ const WeeklyView = {
         <div style="margin:1rem 0;padding:1rem;background:#f0fff4;border-left:3px solid #48bb78;border-radius:6px;">
           <h3 style="margin-bottom:0.75rem;color:#2f855a;">💡 Better Option Available</h3>
           <p><strong>${suggestedCleaner.name}</strong> is available in ${CONFIG.REGIONS[cleaner.region]?.label}</p>
-          <p><strong>Rate:</strong> $${suggestedRate}/hr (Save $${savings})</p>
-          <p><strong>Estimated Pay:</strong> $${suggestedPay}</p>
+          <p><strong>Rate:</strong> $${suggestedRate}/hr (Save $${savings.toFixed(2)})</p>
+          <p><strong>Estimated Pay:</strong> $${suggestedPay.toFixed(2)}</p>
         </div>
       `;
     }
