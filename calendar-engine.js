@@ -74,12 +74,15 @@ class CalendarEngine {
         this.dpCurrentMonth.setFullYear(parseInt(e.target.value));
         this.renderDatePicker();
     });
+
+    document.getElementById('regionSettingsBtn')?.addEventListener('click', () => this.openRegionSettings());
+    document.getElementById('regionSettingsClose')?.addEventListener('click', () => this.closeRegionSettings());
+    document.querySelector('#regionSettingsModal .modal-backdrop')?.addEventListener('click', () => this.closeRegionSettings());
   }
 
   handleDataUpdate(data) {
     this.state.lastUpdate = new Date();
     this.state.error = null;
-    // Reset filters to include all regions
     this.filters.regions = new Set(Object.keys(CONFIG.REGIONS));
     this.render();
   }
@@ -207,12 +210,13 @@ class CalendarEngine {
 
         let html = '';
         filteredCleaners.forEach(cleaner => {
+            const rate = cleaner.rate ? cleaner.rate.replace('$', '') : '25';
             html += `<div class="cleaner-card">
                 <h3>${cleaner.name}</h3>
                 <p><strong>Email:</strong> ${cleaner.email || 'N/A'}</p>
                 <p><strong>Phone:</strong> ${cleaner.phone || 'N/A'}</p>
                 <p><strong>Region:</strong> ${cleaner.region}</p>
-                <p><strong>Rate:</strong> $${cleaner.rate || '25'}/hr</p>
+                <p><strong>Rate:</strong> $${rate}/hr</p>
             </div>`;
         });
         container.innerHTML = html;
@@ -250,6 +254,81 @@ class CalendarEngine {
       btn.addEventListener('click', () => this.renderCleanersModal(region));
       container.appendChild(btn);
     });
+  }
+
+  openRegionSettings() {
+    document.getElementById('regionSettingsModal').classList.add('active');
+    this.renderRegionSettings();
+  }
+
+  closeRegionSettings() {
+    document.getElementById('regionSettingsModal').classList.remove('active');
+  }
+
+  renderRegionSettings() {
+    const container = document.getElementById('regionSettingsList');
+    if (!container) return;
+
+    let html = '<div style="display: flex; flex-direction: column; gap: 1rem;">';
+
+    Object.entries(CONFIG.REGIONS).forEach(([region, config]) => {
+      if (region === 'Uncategorized' || region === 'Unassigned') return;
+
+      html += `
+        <div style="display: flex; align-items: center; gap: 1rem; padding: 1rem; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+          <div style="flex: 1;">
+            <div style="font-weight: 600; margin-bottom: 0.25rem;">${config.emoji || ''} ${config.label}</div>
+            <div style="font-size: 0.875rem; color: #718096;">Region: ${region}</div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <label style="font-size: 0.875rem; font-weight: 500;">Color:</label>
+            <input type="color" 
+                   value="${config.color}" 
+                   onchange="calendarEngine.updateRegionColor('${region}', this.value)"
+                   style="width: 50px; height: 40px; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer;">
+            <div style="padding: 0.5rem 1rem; background: ${config.color}20; color: ${config.color}; border: 1px solid ${config.color}; border-radius: 9999px; font-size: 0.875rem; font-weight: 500;">
+              Preview
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+  }
+
+  updateRegionColor(region, newColor) {
+    if (CONFIG.REGIONS[region]) {
+      CONFIG.REGIONS[region].color = newColor;
+      this.saveRegionColors();
+      this.renderRegionSettings();
+      this.render();
+    }
+  }
+
+  saveRegionColors() {
+    const colors = {};
+    Object.entries(CONFIG.REGIONS).forEach(([region, config]) => {
+      colors[region] = config.color;
+    });
+    localStorage.setItem('dustbustersRegionColors', JSON.stringify(colors));
+  }
+
+  loadRegionColors() {
+    const saved = localStorage.getItem('dustbustersRegionColors');
+    if (saved) {
+      try {
+        const colors = JSON.parse(saved);
+        Object.entries(colors).forEach(([region, color]) => {
+          if (CONFIG.REGIONS[region]) {
+            CONFIG.REGIONS[region].color = color;
+          }
+        });
+      } catch (e) {
+        console.error('Failed to load region colors:', e);
+      }
+    }
   }
 
   openJobsModal() {
