@@ -18,7 +18,7 @@ const HourlyView = {
         let html = '<table class="hourly-table"><thead><tr class="main-header-row">';
         html += '<th class="name-col">Cleaner</th>';
         CONFIG.TIME_SLOTS.ALL_HOURS.forEach(hour => {
-            html += `<th>${hour}</th>`;
+            html += `<th class="hour-column">${hour}</th>`;
         });
         html += '</tr></thead><tbody>';
 
@@ -66,10 +66,10 @@ const HourlyView = {
                 const isAvailable = val === 'AVAILABLE';
                 const slotClass = isBooked ? 'booked' : isAvailable ? 'available' : 'unavailable';
                 
-                html += `<td class="slot ${slotClass}" ${colspan > 1 ? `colspan="${colspan}"`: ''}>`;
+                html += `<td class="slot ${slotClass} hour-column" ${colspan > 1 ? `colspan="${colspan}"`: ''}>`;
                 if(isBooked) {
                     const job = Utils.parseBooking(val);
-                    html += `<div class="job-info">
+                   html += `<div class="job-info">
                         <div class="job-number">${job.jobNumber}</div>
                         <div class="job-customer">${job.customer}</div>
                     </div>`;
@@ -79,11 +79,10 @@ const HourlyView = {
                     html += '—';
                 }
                 html += '</td>';
-i += colspan;
+                i += colspan;
             }
             html += '</tr>';
         });
-
 
         html += '</tbody></table>';
         container.innerHTML = html;
