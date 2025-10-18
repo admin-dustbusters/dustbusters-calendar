@@ -16,6 +16,11 @@
               <span class="status-dot" id="statusDot"></span>
               <span id="statusText">Loading...</span>
             </div>
+            <button id="regionSettingsBtn" class="refresh-btn" title="Region Colors">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M4.25 2A2.25 2.25 0 002 4.25v11.5A2.25 2.25 0 004.25 18h11.5A2.25 2.25 0 0018 15.75V4.25A2.25 2.25 0 0015.75 2H4.25zm4.03 6.28a.75.75 0 00-1.06-1.06L4.97 9.47a.75.75 0 000 1.06l2.25 2.25a.75.75 0 001.06-1.06L6.56 10l1.72-1.72zm4.5-1.06a.75.75 0 10-1.06 1.06L13.44 10l-1.72 1.72a.75.75 0 101.06 1.06l2.25-2.25a.75.75 0 000-1.06l-2.25-2.25z" clip-rule="evenodd" />
+                </svg>
+            </button>
             <button id="refreshBtn" class="refresh-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.204-4.593l.11-1.099a.75.75 0 011.49-.148l-.11 1.099a4 4 0 006.692 3.341l1.099.11a.75.75 0 01.148 1.49l-1.099-.11a5.5 5.5 0 01-1.125-.2zM4.688 8.576a5.5 5.5 0 019.204 4.593l-.11 1.099a.75.75 0 01-1.49.148l.11-1.099a4 4 0 00-6.692-3.341l-1.099-.11a.75.75 0 01-.148-1.49l1.099.11a5.5 5.5 0 011.125.2z" clip-rule="evenodd" />
@@ -132,6 +137,16 @@
     </div>
   </div>
 
+  <div id="regionSettingsModal" class="modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <button class="modal-close" id="regionSettingsClose">×</button>
+      <h2>🎨 Region Color Settings</h2>
+      <p style="color: #718096; margin-bottom: 1.5rem; font-size: 0.875rem;">Customize the color for each region. Changes are saved automatically.</p>
+      <div id="regionSettingsList"></div>
+    </div>
+  </div>
+
   <div id="datePickerModal" class="datepicker-modal">
     <div class="datepicker-backdrop"></div>
     <div class="datepicker-content">
@@ -167,6 +182,9 @@
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       console.log("🚀 Starting DustBusters Calendar...");
+      
+      // Load saved region colors before initializing
+      calendarEngine.loadRegionColors();
       calendarEngine.initialize();
 
       document.getElementById("modalClose").addEventListener("click", () => {
