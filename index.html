@@ -7,113 +7,108 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <!-- Header -->
-  <header class="header">
+  
+<header class="header">
     <div class="container">
-      <h1>🧹 DustBusters Calendar</h1>
-      <div class="header-controls">
-        <div class="week-nav">
-          <button id="prevWeek" class="btn">← Prev</button>
-          <span id="weekDisplay" class="week-display"></span>
-          <button id="nextWeek" class="btn">Next →</button>
-          <button id="todayBtn" class="btn btn-primary">Today</button>
+        <h1>🧹 DustBusters Calendar</h1>
+        <div class="header-right">
+             <div class="status">
+              <span class="status-dot" id="statusDot"></span>
+              <span id="statusText">Loading...</span>
+            </div>
+            <button id="refreshBtn" class="refresh-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.204-4.593l.11-1.099a.75.75 0 011.49-.148l-.11 1.099a4 4 0 006.692 3.341l1.099.11a.75.75 0 01.148 1.49l-1.099-.11a5.5 5.5 0 01-1.125-.2zM4.688 8.576a5.5 5.5 0 019.204 4.593l-.11 1.099a.75.75 0 01-1.49.148l.11-1.099a4 4 0 00-6.692-3.341l-1.099-.11a.75.75 0 01-.148-1.49l1.099.11a5.5 5.5 0 011.125.2z" clip-rule="evenodd" />
+                </svg>
+            </button>
         </div>
-        <div class="status">
-          <span class="status-dot" id="statusDot"></span>
-          <span id="statusText">Loading...</span>
-        </div>
-      </div>
     </div>
   </header>
 
-  <!-- Filters -->
-  <div class="filters">
-    <div class="container">
-      <div class="filter-row">
-        <div class="filter-group">
-          <label>Region:</label>
-          <div id="regionFilters" class="region-btns"></div>
-        </div>
-        <div class="filter-group">
-          <input type="text" id="searchInput" placeholder="Search cleaner..." class="search-box" />
-        </div>
-        <div class="filter-group">
-          <label>View:</label>
-          <select id="viewSelect" class="view-select">
-            <option value="weekly">Weekly View</option>
-            <option value="daily">Daily View</option>
-            <option value="hourly">Hourly View</option>
-            <option value="monthly">Monthly View</option>
-            <option value="cleaner">Cleaner View</option>
-          </select>
-        </div>
-      </div>
-    </div>
-  </div>
+  
 
-  <!-- Stats -->
-  <div class="stats">
+<div class="stats">
     <div class="container">
-      <div class="stat-box">
+      <div class="stat-box" id="cleanersStatBox">
         <div class="stat-label">Cleaners</div>
         <div class="stat-value" id="statCleaners">0</div>
       </div>
       <div class="stat-box">
-        <div class="stat-label">Jobs This Week</div>
+        <div class="stat-label" id="jobsStatLabel">Jobs This Week</div>
         <div class="stat-value" id="statJobs">0</div>
       </div>
       <div class="stat-box">
-        <div class="stat-label">Available Slots</div>
+        <div class="stat-label" id="availableStatLabel">Available Slots</div>
         <div class="stat-value" id="statAvailable">0</div>
       </div>
     </div>
   </div>
+  
+  <div class="container">
+     <div class="controls-wrapper">
+         <div class="filter-controls">
+            <div class="filter-group">
+              <label>Region:</label>
+              <div id="regionFilters" class="region-btns"></div>
+            </div>
+            <div class="filter-group search-box-wrapper">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" /></svg>
+              <input type="text" id="searchInput" placeholder="Search cleaner..." class="search-box" />
+            </div>
+          </div>
+         <div class="calendar-controls">
+              <div class="date-navigation">
+                <button id="navPrev" class="nav-arrow">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clip-rule="evenodd" /></svg>
+                </button>
+                <button id="mainDateDisplay" class="date-display-main"></button>
+                <button id="navToday" class="today-btn-new">Today</button>
+                <button id="navNext" class="nav-arrow">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" /></svg>
+                </button>
+              </div>
+              <div class="view-switcher" id="viewSwitcher">
+                <button class="view-btn" data-view="hourly">Hourly</button>
+                <button class="view-btn" data-view="daily">Daily</button>
+                <button class="view-btn" data-view="weekly">Weekly</button>
+                <button class="view-btn" data-view="monthly">Monthly</button>
+              </div>
+            </div>
+      </div>
+  </div>
 
-  <!-- Main Content -->
+
   <main class="main">
     <div class="container">
-      <!-- Weekly View -->
       <div id="weeklyView" class="view-container">
         <div class="calendar-wrapper">
           <div id="calendarGrid"></div>
         </div>
       </div>
-
-      <!-- Daily View -->
-      <div id="dailyView" class="view-container" style="display:none;">
+       <div id="dailyView" class="view-container" style="display: none;">
         <div class="calendar-wrapper">
-          <div id="calendarGridDaily"></div>
+          <div id="dailyGrid"></div>
         </div>
       </div>
-
-      <!-- Hourly View -->
-      <div id="hourlyView" class="view-container" style="display:none;">
+      <div id="hourlyView" class="view-container" style="display: none;">
         <div class="calendar-wrapper">
-          <div id="calendarGridHourly"></div>
+          <div id="hourlyGrid"></div>
         </div>
       </div>
-
-      <!-- Monthly View -->
-      <div id="monthlyView" class="view-container" style="display:none;">
+      <div id="monthlyView" class="view-container" style="display: none;">
         <div class="calendar-wrapper">
-          <div id="calendarGridMonthly"></div>
+          <div id="monthlyGrid"></div>
         </div>
       </div>
-
-      <!-- Cleaner View -->
-      <div id="cleanerView" class="view-container" style="display:none;">
-        <div id="cleanerCards" class="cleaner-grid"></div>
-      </div>
+      
     </div>
   </main>
 
-  <!-- Loading Overlay -->
-   <div id="loadingOverlay" class="loading-overlay">
+  <div id="loadingOverlay" class="loading-overlay">
     <div class="spinner"></div>
     <p>Loading calendar...</p>
   </div>
 
-  <!-- Job Details Modal -->
   <div id="jobModal" class="modal">
     <div class="modal-backdrop"></div>
     <div class="modal-content">
@@ -121,38 +116,63 @@
       <div id="jobDetails"></div>
     </div>
   </div>
+  
+  <div id="cleanersModal" class="modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <button class="modal-close" id="cleanersModalClose">×</button>
+      <h2>All Cleaners</h2>
+      <div class="filter-controls" style="margin: 1rem 0; box-shadow: none; border-radius: 8px;">
+         <div class="filter-group">
+            <label>Region:</label>
+            <div id="cleanerModalRegionFilters" class="region-btns"></div>
+        </div>
+      </div>
+      <div id="cleanersModalGrid" class="cleaners-list"></div>
+    </div>
+  </div>
 
-  <!-- ✅ Correct Script Load Order -->
+  <div id="datePickerModal" class="datepicker-modal">
+    <div class="datepicker-backdrop"></div>
+    <div class="datepicker-content">
+        <div class="datepicker-header">
+            <button id="dpPrevMonth" class="nav-arrow">&lt;</button>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span id="dpMonth" class="datepicker-month-year"></span>
+                <select id="dpYear" class="datepicker-year-select"></select>
+            </div>
+            <button id="dpNextMonth" class="nav-arrow">&gt;</button>
+        </div>
+        <div class="datepicker-days"></div>
+    </div>
+  </div>
+
+  <!-- Scripts in correct order -->
   <script src="config.js"></script>
   <script src="utils.js"></script>
+  <script src="helpers.js"></script>
   <script src="data-sync.js"></script>
-
+  
   <!-- Views -->
   <script src="views/weekly-view.js"></script>
   <script src="views/daily-view.js"></script>
   <script src="views/hourly-view.js"></script>
   <script src="views/monthly-view.js"></script>
-
-  <!-- Components -->
-  <script src="components/filters.js"></script>
-  <script src="components/cleaner-card.js"></script>
-  <script src="components/booking-panel.js"></script>
-  <script src="components/ai-assistant.js"></script>
-
-  <!-- Calendar Engine (always last) -->
+  <script src="views/cleaners-view.js"></script>
+  
+  <!-- Calendar Engine -->
   <script src="calendar-engine.js"></script>
-
+  
   <!-- Initialize -->
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       console.log("🚀 Starting DustBusters Calendar...");
-      dataSync.startAutoRefresh();
       calendarEngine.initialize();
 
       document.getElementById("modalClose").addEventListener("click", () => {
         document.getElementById("jobModal").classList.remove("active");
       });
-      document.querySelector(".modal-backdrop").addEventListener("click", () => {
+      document.querySelector("#jobModal .modal-backdrop").addEventListener("click", () => {
         document.getElementById("jobModal").classList.remove("active");
       });
 
