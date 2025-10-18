@@ -1,7 +1,7 @@
 // Daily View
 const DailyView = {
     render(data) {
-         const container = document.getElementById("dailyGrid");
+        const container = document.getElementById("dailyGrid");
         if (!container) return;
 
         const cleaners = Array.isArray(data?.cleaners) ? data.cleaners : [];
@@ -43,15 +43,19 @@ const DailyView = {
           const afternoon = WeeklyView.getPeriodStatus(cleaner, schedule, dayShort, 'Afternoon');
           const evening = WeeklyView.getPeriodStatus(cleaner, schedule, dayShort, 'Evening');
 
-            html += WeeklyView.renderCell(morning, 1, 'period-divider');
-            html += WeeklyView.renderCell(afternoon, 1, 'period-divider');
-            html += WeeklyView.renderCell(evening, 1, 'day-divider');
+          html += WeeklyView.renderCell(morning, 1, 'period-divider');
+          html += WeeklyView.renderCell(afternoon, 1, 'period-divider');
+          html += WeeklyView.renderCell(evening, 1, 'day-divider');
 
           html += "</tr>";
         });
 
         html += "</tbody></table>";
         container.innerHTML = html;
+
+        document.querySelectorAll(".slot.booked").forEach((slot) => {
+          slot.addEventListener("click", () => WeeklyView.showJobDetails(slot.dataset));
+        });
     }
 };
 
