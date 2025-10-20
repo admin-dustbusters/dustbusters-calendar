@@ -38,6 +38,9 @@ class DataSync {
         throw new Error('Invalid data format');
       }
       
+      // Filter out cancelled/deleted jobs from all schedules
+      data.cleaners = this.filterValidJobs(data.cleaners);
+      
       // Initialize regions from data
       if (typeof window.initializeRegionsFromData === 'function') {
         window.initializeRegionsFromData(data.cleaners);
@@ -52,6 +55,71 @@ class DataSync {
       console.error('Fetch error:', error);
       return { success: false, error: error.message };
     }
+  }
+
+  // Filter out cancelled and deleted jobs from cleaner schedules
+  filterValidJobs(cleaners) {
+    return cleaners.map(cleaner => {
+      if (!cleaner.schedule || !Array.isArray(cleaner.schedule)) {
+        return cleaner;
+      }
+
+      // Process each week's schedule
+      cleaner.schedule = cleaner.schedule.map(weekSchedule => {
+        const filteredSchedule = { weekStarting: weekSchedule.weekStarting };
+        
+        // Check each time slot
+        Object.entries(weekSchedule).forEach(([key, value]) => {
+          if (key === 'weekStarting') {
+            return;
+          }
+          
+          // If it's a booking, check if it's valid
+          if (typeof value === 'string' && value.startsWith('BOOKED')) {
+            // Check if job is cancelled or deleted
+            if (!this.isJobCancelledOrDeleted(value)) {
+              filteredSchedule[key] = value;
+            }
+            // If cancelled/deleted, don't add it (effectively filtering it out)
+          } else {
+            // Keep AVAILABLE and UNAVAILABLE slots as-is
+            filteredSchedule[key] = value;
+          }
+        });
+        
+        return filteredSchedule;
+      });
+
+      return cleaner;
+    });
+  }
+
+  // Check if a booking string indicates a cancelled or deleted job
+  isJobCancelledOrDeleted(bookingString) {
+    if (!bookingString || !bookingString.startsWith('BOOKED')) {
+      return false;
+    }
+    
+    const lowerBooking = bookingString.toLowerCase();
+    
+    // Check for common cancellation/deletion indicators
+    const cancelledIndicators = [
+      'cancelled',
+      'canceled',
+      'deleted',
+      'removed',
+      'void',
+      '[cancelled]',
+      '[deleted]',
+      '(cancelled)',
+      '(deleted)',
+      'status:cancelled',
+      'status:deleted'
+    ];
+    
+    return cancelledIndicators.some(indicator => 
+      lowerBooking.includes(indicator)
+    );
   }
 
   getData() {
