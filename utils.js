@@ -74,6 +74,27 @@ const Utils = {
   },
   parseBooking(bookingString) {
     if (!bookingString || !bookingString.startsWith('BOOKED')) return null;
+    
+    // Check if job is cancelled or deleted - return null if so
+    const lowerBooking = bookingString.toLowerCase();
+    const cancelledIndicators = [
+      'cancelled',
+      'canceled',
+      'deleted',
+      'removed',
+      'void',
+      '[cancelled]',
+      '[deleted]',
+      '(cancelled)',
+      '(deleted)',
+      'status:cancelled',
+      'status:deleted'
+    ];
+    
+    if (cancelledIndicators.some(indicator => lowerBooking.includes(indicator))) {
+      return null;
+    }
+    
     const parts = bookingString.replace('BOOKED ', '').split(' | ');
     return {
       jobNumber: parts[0]?.trim() || '',
