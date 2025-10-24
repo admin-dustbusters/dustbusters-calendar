@@ -2,6 +2,7 @@
 const CleanerCard = {
   create(cleaner, schedule, weekStart) {
     const regionConfig = CONFIG.REGIONS[cleaner.region] || CONFIG.REGIONS['Uncategorized'];
+    const tierInfo = Utils.getTierInfo(cleaner.job_count);
     
     const card = document.createElement('div');
     card.className = 'cleaner-card';
@@ -18,6 +19,15 @@ const CleanerCard = {
         <span class="cleaner-card-region" style="background: ${regionConfig.color}20; color: ${regionConfig.color};">
           ${regionConfig.emoji || ''} ${regionConfig.label}
         </span>
+      </div>
+    `;
+    
+    // Add tier badge
+    html += `
+      <div style="padding: 0.75rem; background: ${tierInfo.bgColor}; border-radius: 6px; margin-bottom: 1rem; text-align: center;">
+        <div style="font-size: 1.5rem; color: ${tierInfo.color}; margin-bottom: 0.25rem;">${tierInfo.stars}</div>
+        <div style="font-size: 0.875rem; font-weight: 600; color: ${tierInfo.color};">${tierInfo.name}</div>
+        <div style="font-size: 0.75rem; color: #718096; margin-top: 0.25rem;">${cleaner.job_count || 0} jobs completed</div>
       </div>
     `;
     
