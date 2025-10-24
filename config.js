@@ -50,6 +50,28 @@ function initializeRegions(cleaners) {
   const regions = {};
   const uniqueRegions = [...new Set(cleaners.map(c => c.region))].filter(r => r && r !== '');
   
+  // Define specific colors for known regions
+  const predefinedRegions = {
+    'Raleigh': {
+      color: '#8B4513',
+      backgroundColor: '#8B4513',
+      emoji: '🟤',
+      label: 'Raleigh'
+    },
+    'Triad': {
+      color: '#8B5CF6',
+      backgroundColor: '#8B5CF6',
+      emoji: '🟣',
+      label: 'Triad'
+    },
+    'Charlotte': {
+      color: '#EAB308',
+      backgroundColor: '#EAB308',
+      emoji: '🟡',
+      label: 'Charlotte'
+    }
+  };
+  
   uniqueRegions.forEach((region, index) => {
     // Check if we have saved settings for this region
     if (savedSettings[region]) {
@@ -60,6 +82,9 @@ function initializeRegions(cleaners) {
         emoji: savedSettings[region].emoji,
         label: region
       };
+    } else if (predefinedRegions[region]) {
+      // Use predefined settings for known regions
+      regions[region] = predefinedRegions[region];
     } else {
       // Generate new settings for new regions
       const generatedColor = generateRegionColor(index);
