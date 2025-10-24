@@ -22,12 +22,12 @@ const CleanerCard = {
       </div>
     `;
     
-    // Add tier badge
+    // Add tier badge - YELLOW STARS with job count
     html += `
-      <div style="padding: 0.75rem; background: ${tierInfo.bgColor}; border-radius: 6px; margin-bottom: 1rem; text-align: center;">
-        <div style="font-size: 1.5rem; color: ${tierInfo.color}; margin-bottom: 0.25rem;">${tierInfo.stars}</div>
-        <div style="font-size: 0.875rem; font-weight: 600; color: ${tierInfo.color};">${tierInfo.name}</div>
-        <div style="font-size: 0.75rem; color: #718096; margin-top: 0.25rem;">${cleaner.job_count || 0} jobs completed</div>
+      <div style="padding: 0.75rem; background: #FFF9E6; border: 2px solid #FFC107; border-radius: 8px; margin-bottom: 1rem; text-align: center;">
+        <div style="font-size: 1.75rem; color: #FFC107; margin-bottom: 0.25rem; letter-spacing: 2px;">${tierInfo.stars}</div>
+        <div style="font-size: 0.875rem; font-weight: 600; color: #F59E0B;">${tierInfo.name}</div>
+        <div style="font-size: 0.75rem; color: #92400E; margin-top: 0.25rem;">${cleaner.job_count || 0} jobs completed</div>
       </div>
     `;
     
