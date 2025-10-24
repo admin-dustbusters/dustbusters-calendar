@@ -107,7 +107,7 @@ const Utils = {
     return periods[period.toUpperCase()]?.slots || [];
   },
   
-  // NEW: Get tier info based on job count
+  // Get tier info based on job count
   getTierInfo(jobCount) {
     const count = parseInt(jobCount) || 0;
     
@@ -115,40 +115,32 @@ const Utils = {
       return {
         tier: 4,
         name: 'Partner',
-        stars: '★★★★',
-        color: '#FFD700',
-        bgColor: '#FFF9E6'
+        stars: '★★★★'
       };
     } else if (count >= 15) {
       return {
         tier: 3,
         name: 'Trusted Elite',
-        stars: '★★★',
-        color: '#FF6B6B',
-        bgColor: '#FFE8E8'
+        stars: '★★★'
       };
     } else if (count >= 3) {
       return {
         tier: 2,
         name: 'Reliable Pro',
-        stars: '★★',
-        color: '#4ECDC4',
-        bgColor: '#E8F8F7'
+        stars: '★★'
       };
     } else {
       return {
         tier: 1,
         name: 'Starter',
-        stars: '★',
-        color: '#95A5A6',
-        bgColor: '#F0F0F0'
+        stars: '★'
       };
     }
   },
   
-  // NEW: Render star rating HTML
+  // Render star rating HTML - YELLOW STARS ONLY, NO TEXT
   renderStars(jobCount) {
     const tierInfo = this.getTierInfo(jobCount);
-    return `<span class="tier-badge" style="background: ${tierInfo.bgColor}; color: ${tierInfo.color}; padding: 0.15rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; white-space: nowrap;" title="${tierInfo.name} - ${jobCount || 0} jobs completed">${tierInfo.stars} ${tierInfo.name}</span>`;
+    return `<span class="tier-badge" style="color: #FFC107; font-size: 0.9rem; letter-spacing: 1px;" title="${tierInfo.name} - ${jobCount || 0} jobs completed">${tierInfo.stars}</span>`;
   }
 };
