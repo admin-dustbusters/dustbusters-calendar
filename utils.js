@@ -105,5 +105,50 @@ const Utils = {
   getTimeSlotsForPeriod(period) {
     const periods = CONFIG.TIME_SLOTS.PERIODS;
     return periods[period.toUpperCase()]?.slots || [];
+  },
+  
+  // NEW: Get tier info based on job count
+  getTierInfo(jobCount) {
+    const count = parseInt(jobCount) || 0;
+    
+    if (count >= 50) {
+      return {
+        tier: 4,
+        name: 'Partner',
+        stars: '★★★★',
+        color: '#FFD700',
+        bgColor: '#FFF9E6'
+      };
+    } else if (count >= 15) {
+      return {
+        tier: 3,
+        name: 'Trusted Elite',
+        stars: '★★★',
+        color: '#FF6B6B',
+        bgColor: '#FFE8E8'
+      };
+    } else if (count >= 3) {
+      return {
+        tier: 2,
+        name: 'Reliable Pro',
+        stars: '★★',
+        color: '#4ECDC4',
+        bgColor: '#E8F8F7'
+      };
+    } else {
+      return {
+        tier: 1,
+        name: 'Starter',
+        stars: '★',
+        color: '#95A5A6',
+        bgColor: '#F0F0F0'
+      };
+    }
+  },
+  
+  // NEW: Render star rating HTML
+  renderStars(jobCount) {
+    const tierInfo = this.getTierInfo(jobCount);
+    return `<span class="tier-badge" style="background: ${tierInfo.bgColor}; color: ${tierInfo.color}; padding: 0.15rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; white-space: nowrap;" title="${tierInfo.name} - ${jobCount || 0} jobs completed">${tierInfo.stars} ${tierInfo.name}</span>`;
   }
 };
