@@ -25,12 +25,17 @@ const HourlyView = {
         cleaners.forEach(cleaner => {
             html += '<tr>';
             const regionConfig = CONFIG.REGIONS[cleaner.region] || CONFIG.REGIONS['Uncategorized'];
+            const tierHtml = Utils.renderStars(cleaner.job_count);
+            
             html += `<td class="name-col">
                 <div class="cleaner-info">
                     <span class="cleaner-name">${cleaner.name}</span>
-                    <span class="cleaner-region" style="background:${regionConfig.backgroundColor || regionConfig.color}20;color:${regionConfig.color}; border-color:${regionConfig.color};">
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem; align-items: center;">
+                      <span class="cleaner-region" style="background:${regionConfig.backgroundColor || regionConfig.color}20;color:${regionConfig.color}; border-color:${regionConfig.color};">
                         ${regionConfig.emoji || ''} ${regionConfig.label}
-                    </span>
+                      </span>
+                      ${tierHtml}
+                    </div>
                 </div>
             </td>`;
 
