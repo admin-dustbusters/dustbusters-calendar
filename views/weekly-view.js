@@ -96,12 +96,17 @@ const WeeklyView = {
     cleaners.forEach((cleaner) => {
       html += "<tr>";
       const regionConfig = CONFIG.REGIONS[cleaner.region] || CONFIG.REGIONS['Uncategorized'];
+      const tierHtml = Utils.renderStars(cleaner.job_count);
+      
       html += `<td class="name-col">
         <div class="cleaner-info">
           <span class="cleaner-name">${cleaner.name}</span>
-          <span class="cleaner-region" style="background:${regionConfig.backgroundColor || regionConfig.color}20;color:${regionConfig.color}; border-color:${regionConfig.color};">
-            ${regionConfig.emoji || ''} ${regionConfig.label}
-          </span>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem; align-items: center;">
+            <span class="cleaner-region" style="background:${regionConfig.backgroundColor || regionConfig.color}20;color:${regionConfig.color}; border-color:${regionConfig.color};">
+              ${regionConfig.emoji || ''} ${regionConfig.label}
+            </span>
+            ${tierHtml}
+          </div>
         </div>
       </td>`;
 
@@ -283,6 +288,7 @@ const WeeklyView = {
     }
 
     const regionConfig = CONFIG.REGIONS[cleaner.region] || CONFIG.REGIONS['Uncategorized'];
+    const tierInfo = Utils.getTierInfo(cleaner.job_count);
 
     let html = `
       <h2>Job Details</h2>
@@ -296,6 +302,8 @@ const WeeklyView = {
         <h3 style="margin-bottom:0.75rem;">Cleaner Details</h3>
         <p><strong>Name:</strong> ${cleaner.name}</p>
         <p><strong>Region:</strong> <span style="background: ${regionConfig.backgroundColor || regionConfig.color}20; color: ${regionConfig.color}; padding: 0.2rem 0.5rem; border-radius: 9999px; border: 1px solid ${regionConfig.color};">${regionConfig.emoji || ''} ${regionConfig.label}</span></p>
+        <p><strong>Tier:</strong> <span style="background: ${tierInfo.bgColor}; color: ${tierInfo.color}; padding: 0.2rem 0.5rem; border-radius: 9999px; font-weight: 600;">${tierInfo.stars} ${tierInfo.name}</span></p>
+        <p><strong>Jobs Completed:</strong> ${cleaner.job_count || 0}</p>
         <p><strong>Day:</strong> ${day}</p>
         <p><strong>Time:</strong> ${timeRange} (${hours} hours)</p>
         <p><strong>Hourly Rate:</strong> $${hourlyRate}/hr</p>
