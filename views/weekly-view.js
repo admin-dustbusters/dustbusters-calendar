@@ -1,4 +1,4 @@
-// Weekly View
+// Weekly View - IMPROVED VERSION with Smart Time Calculation
 const WeeklyView = {
   getPeriodStatus(cleaner, schedule, day, period) {
     const slots = Utils.getTimeSlotsForPeriod(period);
@@ -29,6 +29,55 @@ const WeeklyView = {
         return { status: 'available', period };
     }
     return { status: 'unavailable', period };
+  },
+
+  // NEW METHOD: Get actual time range for a job across all periods
+  getActualTimeRange(cleaner, schedule, day, jobNumber) {
+    if (!schedule || !jobNumber) return null;
+
+    const allHours = CONFIG.TIME_SLOTS.ALL_HOURS;
+    let firstSlot = null;
+    let lastSlot = null;
+
+    // Check all hourly slots to find the actual start and end times
+    for (const hour of allHours) {
+      const key = `${day}_${hour}`;
+      const val = schedule[key];
+      
+      if (val && val.startsWith("BOOKED")) {
+        const booking = Utils.parseBooking(val);
+        if (booking && booking.jobNumber === jobNumber) {
+          if (firstSlot === null) {
+            firstSlot = hour;
+          }
+          lastSlot = hour;
+        }
+      }
+    }
+
+    if (firstSlot && lastSlot) {
+      // Calculate end time (last slot + 1 hour)
+      const lastIndex = allHours.indexOf(lastSlot);
+      const endSlot = lastIndex < allHours.length - 1 ? allHours[lastIndex + 1] : this.addOneHour(lastSlot);
+      
+      return `${firstSlot} - ${endSlot}`;
+    }
+
+    return null;
+  },
+
+  // Helper to add one hour to a time string
+  addOneHour(timeStr) {
+    const hour = parseInt(timeStr);
+    const isPM = timeStr.includes('pm');
+    
+    if (isPM) {
+      if (hour === 8) return '9pm';
+      return `${hour + 1}pm`;
+    } else {
+      if (hour === 11) return '12pm';
+      return `${hour + 1}am`;
+    }
   },
 
   renderCell(statusInfo, colspan, extraClasses, timeRange) {
@@ -133,18 +182,41 @@ const WeeklyView = {
             return classes.join(' ');
         };
 
-        if (isMorningBooked && isAfternoonBooked && isEveningBooked && morning.job.jobNumber === afternoon.job.jobNumber && afternoon.job.jobNumber === evening.job.jobNumber) {
-            html += this.renderCell(morning, 3, extraClasses('Evening') + `" data-date="${dateStr}`, '8am - 9pm');
+        // SMART TIME CALCULATION - Get actual time range instead of hardcoded ranges
+        if (isMorningBooked && isAfternoonBooked && isEveningBooked && 
+            morning.job.jobNumber === afternoon.job.jobNumber && 
+            afternoon.job.jobNumber === evening.job.jobNumber) {
+            // All three periods - calculate actual time
+            const timeRange = this.getActualTimeRange(cleaner, schedule, day, morning.job.jobNumber);
+            html += this.renderCell(morning, 3, extraClasses('Evening') + `" data-date="${dateStr}`, timeRange);
         } else if (isMorningBooked && isAfternoonBooked && morning.job.jobNumber === afternoon.job.jobNumber) {
-            html += this.renderCell(morning, 2, extraClasses('Afternoon', 'period-divider') + `" data-date="${dateStr}`, '8am - 5pm');
+            // Morning + Afternoon - calculate actual time
+            const timeRange = this.getActualTimeRange(cleaner, schedule, day, morning.job.jobNumber);
+            html += this.renderCell(morning, 2, extraClasses('Afternoon', 'period-divider') + `" data-date="${dateStr}`, timeRange);
             html += this.renderCell(evening, 1, extraClasses('Evening') + `" data-date="${dateStr}`);
         } else if (isAfternoonBooked && isEveningBooked && afternoon.job.jobNumber === evening.job.jobNumber) {
+            // Afternoon + Evening - calculate actual time
+            const timeRange = this.getActualTimeRange(cleaner, schedule, day, afternoon.job.jobNumber);
             html += this.renderCell(morning, 1, extraClasses('Morning') + `" data-date="${dateStr}`);
-            html += this.renderCell(afternoon, 2, extraClasses('Evening', 'day-divider') + `" data-date="${dateStr}`, '12pm - 9pm');
+            html += this.renderCell(afternoon, 2, extraClasses('Evening', 'day-divider') + `" data-date="${dateStr}`, timeRange);
         } else {
-            html += this.renderCell(morning, 1, extraClasses('Morning') + `" data-date="${dateStr}`);
-            html += this.renderCell(afternoon, 1, extraClasses('Afternoon') + `" data-date="${dateStr}`);
-            html += this.renderCell(evening, 1, extraClasses('Evening') + `" data-date="${dateStr}`);
+            // Individual periods - calculate actual times for booked ones
+            if (isMorningBooked) {
+                const timeRange = this.getActualTimeRange(cleaner, schedule, day, morning.job.jobNumber);
+                morning.calculatedTime = timeRange;
+            }
+            if (isAfternoonBooked) {
+                const timeRange = this.getActualTimeRange(cleaner, schedule, day, afternoon.job.jobNumber);
+                afternoon.calculatedTime = timeRange;
+            }
+            if (isEveningBooked) {
+                const timeRange = this.getActualTimeRange(cleaner, schedule, day, evening.job.jobNumber);
+                evening.calculatedTime = timeRange;
+            }
+            
+            html += this.renderCell(morning, 1, extraClasses('Morning') + `" data-date="${dateStr}`, morning.calculatedTime);
+            html += this.renderCell(afternoon, 1, extraClasses('Afternoon') + `" data-date="${dateStr}`, afternoon.calculatedTime);
+            html += this.renderCell(evening, 1, extraClasses('Evening') + `" data-date="${dateStr}`, evening.calculatedTime);
         }
       });
       html += "</tr>";
@@ -251,18 +323,23 @@ const WeeklyView = {
 
     if (!targetJobNumber) return;
 
+    // Use smart time calculation
+    const timeRange = this.getActualTimeRange(cleaner, schedule, day, targetJobNumber);
+
     const isMorningMatch = morning.status === 'booked' && morning.job.jobNumber === targetJobNumber;
     const isAfternoonMatch = afternoon.status === 'booked' && afternoon.job.jobNumber === targetJobNumber;
     const isEveningMatch = evening.status === 'booked' && evening.job.jobNumber === targetJobNumber;
 
-    let timeRange = '';
+    // Calculate hours from actual time range
     let hours = 0;
-    if (isMorningMatch && isAfternoonMatch && isEveningMatch) { timeRange = '8am - 9pm'; hours = 13; }
-    else if (isMorningMatch && isAfternoonMatch) { timeRange = '8am - 5pm'; hours = 9; }
-    else if (isAfternoonMatch && isEveningMatch) { timeRange = '12pm - 9pm'; hours = 9; }
-    else if (isMorningMatch) { timeRange = '8am - 12pm'; hours = 4; }
-    else if (isAfternoonMatch) { timeRange = '12pm - 5pm'; hours = 5; }
-    else if (isEveningMatch) { timeRange = '5pm - 9pm'; hours = 4; }
+    if (timeRange) {
+      const [start, end] = timeRange.split(' - ');
+      const startIdx = CONFIG.TIME_SLOTS.ALL_HOURS.indexOf(start);
+      const endIdx = CONFIG.TIME_SLOTS.ALL_HOURS.indexOf(end);
+      if (startIdx !== -1 && endIdx !== -1) {
+        hours = endIdx - startIdx;
+      }
+    }
 
     const hourlyRate = parseFloat(cleaner.rate) || 25;
     const estimatedPay = hours * hourlyRate;
@@ -305,7 +382,7 @@ const WeeklyView = {
         <p><strong>Tier:</strong> <span style="background: ${tierInfo.bgColor}; color: ${tierInfo.color}; padding: 0.2rem 0.5rem; border-radius: 9999px; font-weight: 600;">${tierInfo.stars} ${tierInfo.name}</span></p>
         <p><strong>Jobs Completed:</strong> ${cleaner.job_count || 0}</p>
         <p><strong>Day:</strong> ${day}</p>
-        <p><strong>Time:</strong> ${timeRange} (${hours} hours)</p>
+        <p><strong>Time:</strong> ${timeRange || 'Unknown'} (${hours} hours)</p>
         <p><strong>Hourly Rate:</strong> $${hourlyRate}/hr</p>
         <p style="font-size:1.1rem;margin-top:0.5rem;"><strong>Estimated Pay:</strong> <span style="color:#2f855a;font-weight:700;">$${estimatedPay.toFixed(2)}</span></p>
       </div>
