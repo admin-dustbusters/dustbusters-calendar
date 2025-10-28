@@ -161,6 +161,260 @@
         <div class="datepicker-days"></div>
     </div>
   </div>
+<!-- ADD THIS TO YOUR index.html BEFORE THE CLOSING </body> TAG -->
+
+<!-- Zenbooker Booking Modal -->
+<!-- Zenbooker Booking Modal -->
+<div id="zenbookerModal" class="modal">
+  <div class="modal-content zenbooker-modal-content">
+    <div class="zenbooker-header">  <!-- CHANGED -->
+      <h2>Create Booking in Zenbooker</h2>
+      <button class="zenbooker-close" onclick="HourlyView.closeZenbookerModal()">✕</button>  <!-- CHANGED -->
+    </div>
+    
+    <div id="bookingDetails"></div>
+    
+    <div class="iframe-container">
+      <iframe 
+        id="zenbookerIframe" 
+        src="" 
+        frameborder="0"
+        allow="payment"
+        sandbox="allow-same-origin allow-scripts allow-forms allow-popups">
+      </iframe>
+    </div>
+    
+    <div class="zenbooker-footer">  <!-- CHANGED -->
+      <button class="btn" onclick="HourlyView.closeZenbookerModal()">
+        Close
+      </button>
+      <p style="font-size: 0.875rem; color: #64748b; margin: 0.5rem 0 0 0;">
+        After scheduling the job, close this window to refresh the calendar
+      </p>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Zenbooker Modal Styles */
+.zenbooker-modal-content {
+  width: 95%;
+  max-width: 1400px;
+  height: 90vh;
+  max-height: 900px;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.zenbooker-header {  /* CHANGED */
+  padding: 1.5rem;
+  border-bottom: 2px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.zenbooker-header h2 {  /* CHANGED */
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.zenbooker-close {  /* CHANGED */
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.zenbooker-close:hover {  /* CHANGED */
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+.zenbooker-footer {  /* CHANGED */
+  padding: 1rem 1.5rem;
+  border-top: 2px solid #e2e8f0;
+  background: #f8fafc;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+#bookingDetails {
+  padding: 1.5rem;
+  flex-shrink: 0;
+}
+
+.iframe-container {
+  flex: 1;
+  padding: 0 1.5rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.iframe-container iframe {
+  width: 100%;
+  height: 100%;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: white;
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 2px solid #e2e8f0;
+  background: #f8fafc;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* Drag Selection Styles */
+.slot.draggable {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  transition: all 0.1s;
+}
+
+.slot.draggable:hover {
+  background-color: #dbeafe !important;
+  border-color: #3b82f6 !important;
+  transform: scale(1.02);
+}
+
+.slot.selecting {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
+  color: white !important;
+  border-color: #1e40af !important;
+  font-weight: 600;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
+.slot.selecting .available-indicator {
+  color: white;
+  font-size: 1.5rem;
+}
+
+.available-indicator {
+  font-size: 1.25rem;
+  color: #10b981;
+  font-weight: bold;
+}
+
+/* Compact booking display for hourly view */
+.booking-compact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  padding: 0.25rem;
+}
+
+.job-number-small {
+  font-weight: 700;
+  font-size: 0.7rem;
+  color: #991b1b;
+}
+
+.job-customer-small {
+  font-size: 0.65rem;
+  color: #7f1d1d;
+  text-align: center;
+  line-height: 1.1;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .zenbooker-modal-content {
+    width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  
+  .modal-header h2 {
+    font-size: 1.25rem;
+  }
+  
+  #bookingDetails {
+    padding: 1rem;
+  }
+  
+  .iframe-container {
+    padding: 0 1rem;
+  }
+}
+
+/* Hourly table specific styles */
+.hourly-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.hourly-table th.time-header {
+  padding: 0.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  min-width: 60px;
+}
+
+.hourly-table td.slot {
+  padding: 0.5rem;
+  text-align: center;
+  border: 1px solid #cbd5e1;
+  min-height: 60px;
+  vertical-align: middle;
+}
+
+/* Loading state */
+.iframe-container.loading::before {
+  content: '⏳ Loading Zenbooker...';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.25rem;
+  color: #64748b;
+}
+
+/* Success message after booking */
+.booking-success {
+  padding: 1rem;
+  background: #f0fdf4;
+  border: 2px solid #22c55e;
+  border-radius: 8px;
+  color: #166534;
+  text-align: center;
+  margin: 1rem;
+}
+
+.booking-success h3 {
+  margin: 0 0 0.5rem 0;
+  color: #166534;
+}
+</style>
+
+
+
+
+  
 
   <!-- Scripts in correct order -->
   <script src="config.js"></script>
