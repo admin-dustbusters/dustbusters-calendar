@@ -261,17 +261,15 @@ const HourlyView = {
         const bookingDetails = document.getElementById('bookingDetails');
 
         bookingDetails.innerHTML = `
-          <div style="padding: 1rem; background: #f0f9ff; border-radius: 8px; margin-bottom: 1rem;">
-            <h3 style="margin: 0 0 0.5rem 0; color: #0369a1;">📅 Booking Details</h3>
-            <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem; font-size: 0.95rem;">
+          <div>
+            <h3>📅 Booking Details</h3>
+            <div class="booking-info-grid">
               <strong>Cleaner:</strong> <span>${bookingInfo.cleanerName}</span>
               <strong>Date:</strong> <span>${bookingInfo.date}</span>
               <strong>Time:</strong> <span>${bookingInfo.startHour} - ${bookingInfo.endHour}</span>
               <strong>Duration:</strong> <span>${bookingInfo.duration} hour${bookingInfo.duration > 1 ? 's' : ''}</span>
             </div>
-            <p style="margin: 0.75rem 0 0 0; font-size: 0.875rem; color: #0369a1;">
-              ℹ️ Complete the booking form below ⬇️
-            </p>
+            <p>ℹ️ Complete the booking form below ⬇️</p>
           </div>
         `;
 
