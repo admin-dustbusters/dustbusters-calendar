@@ -195,12 +195,12 @@
   </div>
 </div>
 <style>
-/* Zenbooker Modal Styles - BIGGER & MOBILE OPTIMIZED */
+/* Zenbooker Modal Styles - COMPACT DETAILS & BIGGER IFRAME */
 .zenbooker-modal-content {
   width: 98%;
-  max-width: 1600px; /* BIGGER - was 1400px */
-  height: 95vh; /* BIGGER - was 90vh */
-  max-height: none; /* Remove height restriction */
+  max-width: 1600px;
+  height: 95vh;
+  max-height: none;
   display: flex;
   flex-direction: column;
   padding: 0;
@@ -208,19 +208,19 @@
 }
 
 .zenbooker-header {
-  padding: 1.5rem;
+  padding: 1rem 1.5rem; /* REDUCED - was 1.5rem */
   border-bottom: 2px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  flex-shrink: 0; /* Don't shrink header */
+  flex-shrink: 0;
 }
 
 .zenbooker-header h2 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.25rem; /* SMALLER - was 1.5rem */
 }
 
 .zenbooker-close {
@@ -244,25 +244,53 @@
 }
 
 .zenbooker-footer {
-  padding: 1rem 1.5rem;
+  padding: 0.75rem 1.5rem; /* REDUCED - was 1rem 1.5rem */
   border-top: 2px solid #e2e8f0;
   background: #f8fafc;
   text-align: center;
-  flex-shrink: 0; /* Don't shrink footer */
+  flex-shrink: 0;
 }
 
 #bookingDetails {
-  padding: 1rem 1.5rem;
-  flex-shrink: 0; /* Don't shrink booking details */
+  padding: 0.75rem 1.5rem; /* REDUCED - was 1rem 1.5rem */
+  flex-shrink: 0;
+}
+
+/* COMPACT BOOKING DETAILS STYLING */
+#bookingDetails > div {
+  padding: 0.75rem; /* REDUCED - was 1rem */
+  background: #f0f9ff;
+  border-radius: 6px; /* SMALLER - was 8px */
+  margin-bottom: 0; /* Remove bottom margin */
+}
+
+#bookingDetails h3 {
+  margin: 0 0 0.35rem 0; /* REDUCED - was 0 0 0.5rem 0 */
+  color: #0369a1;
+  font-size: 1rem; /* SMALLER - was default */
+}
+
+#bookingDetails .booking-info-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 0.75rem; /* REDUCED - was 0.5rem 1rem */
+  font-size: 0.875rem; /* SMALLER - was 0.95rem */
+}
+
+#bookingDetails p {
+  margin: 0.5rem 0 0 0; /* REDUCED - was 0.75rem 0 0 0 */
+  font-size: 0.8125rem; /* SMALLER - was 0.875rem */
+  color: #0369a1;
+  line-height: 1.3;
 }
 
 .iframe-container {
-  flex: 1; /* Take all remaining space */
+  flex: 1; /* Takes ALL remaining space */
   padding: 0 1.5rem 1rem 1.5rem;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-height: 0; /* Important for flex child */
+  min-height: 0;
 }
 
 .iframe-container iframe {
@@ -271,25 +299,25 @@
   border: 2px solid #e2e8f0;
   border-radius: 8px;
   background: white;
-  min-height: 500px; /* Ensure minimum height */
+  min-height: 500px;
 }
 
 /* MOBILE OPTIMIZATIONS */
 @media (max-width: 768px) {
   .zenbooker-modal-content {
     width: 100%;
-    height: 100vh; /* Full screen on mobile */
+    height: 100vh;
     max-height: 100vh;
     border-radius: 0;
     margin: 0;
   }
   
   .zenbooker-header {
-    padding: 1rem;
+    padding: 0.75rem 1rem; /* More compact */
   }
   
   .zenbooker-header h2 {
-    font-size: 1.1rem;
+    font-size: 1rem;
   }
   
   .zenbooker-close {
@@ -299,15 +327,26 @@
   }
   
   #bookingDetails {
-    padding: 0.75rem 1rem;
-  }
-  
-  #bookingDetails h3 {
-    font-size: 1rem;
+    padding: 0.5rem 1rem; /* Very compact on mobile */
   }
   
   #bookingDetails > div {
+    padding: 0.5rem;
+  }
+  
+  #bookingDetails h3 {
     font-size: 0.875rem;
+    margin: 0 0 0.25rem 0;
+  }
+  
+  #bookingDetails .booking-info-grid {
+    font-size: 0.8125rem;
+    gap: 0.25rem 0.5rem;
+  }
+  
+  #bookingDetails p {
+    font-size: 0.75rem;
+    margin: 0.35rem 0 0 0;
   }
   
   .iframe-container {
@@ -320,11 +359,11 @@
   }
   
   .zenbooker-footer {
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 1rem;
   }
   
   .zenbooker-footer p {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
   }
 }
 
@@ -335,6 +374,10 @@
     height: 92vh;
   }
   
+  #bookingDetails {
+    padding: 0.65rem 1.25rem;
+  }
+  
   .iframe-container iframe {
     min-height: 450px;
   }
@@ -343,7 +386,7 @@
 /* LARGE SCREENS */
 @media (min-width: 1920px) {
   .zenbooker-modal-content {
-    max-width: 1800px; /* Even bigger on large screens */
+    max-width: 1800px;
   }
 }
 
