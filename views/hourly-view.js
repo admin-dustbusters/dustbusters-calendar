@@ -1,5 +1,9 @@
-// Hourly View - MINIMAL UPDATE (keeps original design, just adds Zenbooker booking)
+// Hourly View - FIXED Drag-and-Slide (preserves original design)
 const HourlyView = {
+    isDragging: false,
+    dragStart: null,
+    selectedSlots: [],
+    
     render(data) {
         const container = document.getElementById("hourlyGrid");
         if (!container) return;
@@ -42,12 +46,15 @@ const HourlyView = {
             const schedule = cleaner.schedule?.find(s => s.weekStarting === weekStr);
             const hours = CONFIG.TIME_SLOTS.ALL_HOURS;
             let i = 0;
+            
             while (i < hours.length) {
                 const hour = hours[i];
                 const key = `${dayShort}_${hour}`;
                 const val = schedule ? schedule[key] : undefined;
 
                 let colspan = 1;
+                
+                // Calculate colspan for booked jobs (ORIGINAL LOGIC)
                 if (val && val.startsWith('BOOKED')) {
                     const currentJob = Utils.parseBooking(val);
                     for (let j = i + 1; j < hours.length; j++) {
@@ -70,11 +77,16 @@ const HourlyView = {
                 const isAvailable = val === 'AVAILABLE';
                 const slotClass = isBooked ? 'booked' : isAvailable ? 'available' : 'unavailable';
                 
-                // ONLY CHANGE: Add data attributes to available slots for booking
-                const bookingAttrs = isAvailable ? 
-                    `data-cleaner-id="${cleaner.id}" data-cleaner-name="${cleaner.name}" data-hour="${hour}" data-date="${Utils.date.formatDate(day)}"` : '';
+                // ADD: data attributes for dragging on available slots
+                const dragAttrs = isAvailable ? 
+                    `data-cleaner-id="${cleaner.id}" data-cleaner-name="${cleaner.name}" data-hour="${hour}" data-date="${Utils.date.formatDate(day)}" data-hour-index="${i}"` : '';
                 
-                html += `<td class="slot ${slotClass} hour-column" ${colspan > 1 ? `colspan="${colspan}"`: ''} ${bookingAttrs}>`;
+                // ADD: data attributes for booked slots (for click popup)
+                const bookedAttrs = isBooked ? 
+                    `data-cleaner="${cleaner.id}" data-day="${dayShort}" data-period="Hourly"` : '';
+                
+                html += `<td class="slot ${slotClass} hour-column" ${colspan > 1 ? `colspan="${colspan}"`: ''} ${dragAttrs} ${bookedAttrs}>`;
+                
                 if(isBooked) {
                     const job = Utils.parseBooking(val);
                     html += `<div class="job-info">
@@ -95,62 +107,180 @@ const HourlyView = {
         html += '</tbody></table>';
         container.innerHTML = html;
 
-        // NEW: Add click handlers to available slots
-        this.setupClickHandlers();
+        // Setup drag functionality
+        this.setupDragSelection();
+        
+        // Setup click handler for booked jobs
+        this.setupBookedJobClicks();
     },
 
-    // NEW METHOD: Setup click to open Zenbooker
-    setupClickHandlers() {
-        const availableSlots = document.querySelectorAll('.slot.available');
-        
-        availableSlots.forEach(slot => {
+    setupBookedJobClicks() {
+        document.querySelectorAll('.slot.booked').forEach(slot => {
             slot.style.cursor = 'pointer';
-            
             slot.addEventListener('click', (e) => {
-                const cleanerId = slot.dataset.cleanerId;
-                const cleanerName = slot.dataset.cleanerName;
-                const hour = slot.dataset.hour;
-                const date = slot.dataset.date;
-                
-                this.openZenbookerBooking({
-                    cleanerId,
-                    cleanerName,
-                    hour,
-                    date
-                });
+                e.stopPropagation();
+                this.showJobDetails(slot.dataset);
             });
         });
     },
 
-    // NEW METHOD: Open Zenbooker modal
+    setupDragSelection() {
+        const availableSlots = document.querySelectorAll('.slot.available');
+        
+        availableSlots.forEach(slot => {
+            // Make available slots look draggable
+            slot.style.cursor = 'pointer';
+            
+            // Mouse events
+            slot.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                this.startDrag(slot);
+            });
+            
+            slot.addEventListener('mouseenter', (e) => {
+                if (this.isDragging) {
+                    this.updateSelection(slot);
+                }
+            });
+            
+            // Touch events for mobile
+            slot.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.startDrag(slot);
+            });
+            
+            slot.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (element && element.classList.contains('available')) {
+                    this.updateSelection(element);
+                }
+            });
+        });
+        
+        // Global mouse/touch end handlers
+        document.addEventListener('mouseup', () => {
+            if (this.isDragging) {
+                this.endDrag();
+            }
+        });
+        
+        document.addEventListener('touchend', () => {
+            if (this.isDragging) {
+                this.endDrag();
+            }
+        });
+    },
+
+    startDrag(slot) {
+        this.isDragging = true;
+        this.dragStart = slot;
+        this.selectedSlots = [slot];
+        slot.classList.add('selecting');
+    },
+
+    updateSelection(currentSlot) {
+        if (!this.isDragging || !this.dragStart) return;
+        
+        // Only allow selection within same cleaner
+        const startCleaner = this.dragStart.dataset.cleanerId;
+        const currentCleaner = currentSlot.dataset.cleanerId;
+        
+        if (startCleaner !== currentCleaner) return;
+        
+        // Clear previous selection
+        document.querySelectorAll('.slot.selecting').forEach(s => {
+            s.classList.remove('selecting');
+        });
+        
+        // Get all available slots for this cleaner
+        const cleanerSlots = Array.from(
+            document.querySelectorAll(`.slot.available[data-cleaner-id="${startCleaner}"]`)
+        );
+        
+        const startIndex = parseInt(this.dragStart.dataset.hourIndex);
+        const currentIndex = parseInt(currentSlot.dataset.hourIndex);
+        
+        const minIndex = Math.min(startIndex, currentIndex);
+        const maxIndex = Math.max(startIndex, currentIndex);
+        
+        // Select all slots in range
+        this.selectedSlots = cleanerSlots.filter(slot => {
+            const idx = parseInt(slot.dataset.hourIndex);
+            return idx >= minIndex && idx <= maxIndex;
+        });
+        
+        // Add visual selection
+        this.selectedSlots.forEach(slot => {
+            slot.classList.add('selecting');
+        });
+    },
+
+    endDrag() {
+        if (!this.isDragging) return;
+        
+        this.isDragging = false;
+        
+        if (this.selectedSlots.length === 0) return;
+        
+        // Get booking info
+        const firstSlot = this.selectedSlots[0];
+        const lastSlot = this.selectedSlots[this.selectedSlots.length - 1];
+        
+        const cleanerId = firstSlot.dataset.cleanerId;
+        const cleanerName = firstSlot.dataset.cleanerName;
+        const date = firstSlot.dataset.date;
+        const startHour = firstSlot.dataset.hour;
+        const endHour = lastSlot.dataset.hour;
+        const duration = this.selectedSlots.length;
+        
+        // Clear visual selection
+        document.querySelectorAll('.slot.selecting').forEach(s => {
+            s.classList.remove('selecting');
+        });
+        
+        // Open Zenbooker
+        this.openZenbookerBooking({
+            cleanerId,
+            cleanerName,
+            date,
+            startHour,
+            endHour,
+            duration
+        });
+        
+        // Reset
+        this.dragStart = null;
+        this.selectedSlots = [];
+    },
+
     openZenbookerBooking(bookingInfo) {
         const modal = document.getElementById('zenbookerModal');
         const iframe = document.getElementById('zenbookerIframe');
         const bookingDetails = document.getElementById('bookingDetails');
 
-        // Show booking context
         bookingDetails.innerHTML = `
           <div style="padding: 1rem; background: #f0f9ff; border-radius: 8px; margin-bottom: 1rem;">
-            <h3 style="margin: 0 0 0.5rem 0; color: #0369a1;">📅 Booking Context</h3>
+            <h3 style="margin: 0 0 0.5rem 0; color: #0369a1;">📅 Booking Details</h3>
             <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem; font-size: 0.95rem;">
               <strong>Cleaner:</strong> <span>${bookingInfo.cleanerName}</span>
               <strong>Date:</strong> <span>${bookingInfo.date}</span>
-              <strong>Starting:</strong> <span>${bookingInfo.hour}</span>
+              <strong>Time:</strong> <span>${bookingInfo.startHour} - ${bookingInfo.endHour}</span>
+              <strong>Duration:</strong> <span>${bookingInfo.duration} hour${bookingInfo.duration > 1 ? 's' : ''}</span>
             </div>
             <p style="margin: 0.75rem 0 0 0; font-size: 0.875rem; color: #0369a1;">
-              ℹ️ Complete the booking form below. You'll need to select/create customer, choose service type, and set duration.
+              ℹ️ Complete the booking form below ⬇️
             </p>
           </div>
         `;
 
-        // Load Zenbooker
         const zenbookerUrl = `https://zenbooker.com/app?view=create-job&return=sched&date=${bookingInfo.date}`;
         iframe.src = zenbookerUrl;
         
         modal.classList.add('active');
     },
 
-    // NEW METHOD: Close modal
     closeZenbookerModal() {
         const modal = document.getElementById('zenbookerModal');
         const iframe = document.getElementById('zenbookerIframe');
@@ -158,10 +288,16 @@ const HourlyView = {
         modal.classList.remove('active');
         iframe.src = '';
         
-        // Refresh calendar
         setTimeout(() => {
             dataSync.refresh();
         }, 1000);
+    },
+
+    showJobDetails(dataset) {
+        // Use WeeklyView's job details popup
+        if (WeeklyView && WeeklyView.showJobDetails) {
+            WeeklyView.showJobDetails(dataset);
+        }
     }
 };
 
