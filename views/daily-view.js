@@ -1,4 +1,4 @@
-// Daily View
+// Daily View - IMPROVED VERSION with Smart Time Calculation
 const DailyView = {
     render(data) {
         const container = document.getElementById("dailyGrid");
@@ -47,9 +47,23 @@ const DailyView = {
           const afternoon = WeeklyView.getPeriodStatus(cleaner, schedule, dayShort, 'Afternoon');
           const evening = WeeklyView.getPeriodStatus(cleaner, schedule, dayShort, 'Evening');
 
-          html += WeeklyView.renderCell(morning, 1, 'period-divider');
-          html += WeeklyView.renderCell(afternoon, 1, 'period-divider');
-          html += WeeklyView.renderCell(evening, 1, 'day-divider');
+          // SMART TIME CALCULATION - Add actual time ranges for booked periods
+          if (morning.status === 'booked' && morning.job.jobNumber) {
+            const timeRange = WeeklyView.getActualTimeRange(cleaner, schedule, dayShort, morning.job.jobNumber);
+            morning.calculatedTime = timeRange;
+          }
+          if (afternoon.status === 'booked' && afternoon.job.jobNumber) {
+            const timeRange = WeeklyView.getActualTimeRange(cleaner, schedule, dayShort, afternoon.job.jobNumber);
+            afternoon.calculatedTime = timeRange;
+          }
+          if (evening.status === 'booked' && evening.job.jobNumber) {
+            const timeRange = WeeklyView.getActualTimeRange(cleaner, schedule, dayShort, evening.job.jobNumber);
+            evening.calculatedTime = timeRange;
+          }
+
+          html += WeeklyView.renderCell(morning, 1, 'period-divider', morning.calculatedTime);
+          html += WeeklyView.renderCell(afternoon, 1, 'period-divider', afternoon.calculatedTime);
+          html += WeeklyView.renderCell(evening, 1, 'day-divider', evening.calculatedTime);
 
           html += "</tr>";
         });
